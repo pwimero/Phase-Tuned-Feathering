@@ -11,10 +11,14 @@ readme = "README.md"
 authors = [
     { name = "Phase Tuned Feathering" }
 ]
-dependencies = []
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "torch"
+]
 
 [project.optional-dependencies]
-aero = ["aerosandbox"]
 dev = ["pytest"]
 
 [tool.setuptools.packages.find]

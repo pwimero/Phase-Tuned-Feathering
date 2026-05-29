@@ -16,27 +16,23 @@ _SRC_DIR = _SCRIPT_DIR.parents[1] / "src"
 if _SRC_DIR.exists() and str(_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(_SRC_DIR))
 
-try:
-    from phase_tuned_feathering.geometry import (
-        default_geometry,
-        feather_root_properties,
-        feather_section,
-        fusion_parameter_values,
-        root_to_fusion_cm,
-        section_to_fusion_cm,
-    )
-    from phase_tuned_feathering.io import (
-        write_geometry_metadata_json,
-        write_source_grid_csv,
-    )
+from phase_tuned_feathering.geometry import (
+    default_geometry,
+    feather_root_properties,
+    feather_section,
+    fusion_parameter_values,
+    root_to_fusion_cm,
+    section_to_fusion_cm,
+)
+from phase_tuned_feathering.io import (
+    write_geometry_metadata_json,
+    write_source_grid_csv,
+)
+from phase_tuned_feathering.visualization import write_simulator_geometry_renders
 
-    SHARED_GEOMETRY_AVAILABLE = True
-    GEOMETRY_PARAMS = default_geometry()
-    _FUSION_VALUES = fusion_parameter_values(GEOMETRY_PARAMS)
-except Exception:
-    SHARED_GEOMETRY_AVAILABLE = False
-    GEOMETRY_PARAMS = None
-    _FUSION_VALUES = {}
+
+GEOMETRY_PARAMS = default_geometry()
+_FUSION_VALUES = fusion_parameter_values(GEOMETRY_PARAMS)
 
 
 # NOTE: Fusion 360's API uses centimeters internally. All numeric values
@@ -58,85 +54,73 @@ except Exception:
 # - Build each feather as its own loft from x = 0, then union the bodies into
 #   one export-ready solid for inspection and meshing.
 
-CENTER_WING_CHORD = _FUSION_VALUES.get("CENTER_WING_CHORD", 30.0)
-WING_1_CHORD = _FUSION_VALUES.get("WING_1_CHORD", 24.0)
-WING_7_CHORD = _FUSION_VALUES.get("WING_7_CHORD", 18.0)
-HALF_SPAN = _FUSION_VALUES.get("HALF_SPAN", 160.0)
-Y_SPACING_SCALE = _FUSION_VALUES.get("Y_SPACING_SCALE", 1.1)
-ADDITIONAL_WINGS = _FUSION_VALUES.get("ADDITIONAL_WINGS", 6)
-MID_WING_SPAN_SCALE = _FUSION_VALUES.get("MID_WING_SPAN_SCALE", 2.0)
-WING_1_TIP_SWEEP = _FUSION_VALUES.get("WING_1_TIP_SWEEP", -55.0)
-WING_7_TIP_SWEEP = _FUSION_VALUES.get("WING_7_TIP_SWEEP", 20.0)
+CENTER_WING_CHORD = _FUSION_VALUES["CENTER_WING_CHORD"]
+WING_1_CHORD = _FUSION_VALUES["WING_1_CHORD"]
+WING_7_CHORD = _FUSION_VALUES["WING_7_CHORD"]
+HALF_SPAN = _FUSION_VALUES["HALF_SPAN"]
+Y_SPACING_SCALE = _FUSION_VALUES["Y_SPACING_SCALE"]
+ADDITIONAL_WINGS = _FUSION_VALUES["ADDITIONAL_WINGS"]
+MID_WING_SPAN_SCALE = _FUSION_VALUES["MID_WING_SPAN_SCALE"]
+WING_1_TIP_SWEEP = _FUSION_VALUES["WING_1_TIP_SWEEP"]
+WING_7_TIP_SWEEP = _FUSION_VALUES["WING_7_TIP_SWEEP"]
 # Avoid an ultra-tiny final tip section; it was making feather 7 especially
 # fragile and prone to bad export triangles.
-SWEEP_SECTION_FRACTIONS = _FUSION_VALUES.get(
-    "SWEEP_SECTION_FRACTIONS",
-    (0.0, 0.25, 0.5, 0.75, 0.8, 0.9, 0.95, 0.98, 0.99),
-)
-SWEEP_CURVE_EXPONENT = _FUSION_VALUES.get("SWEEP_CURVE_EXPONENT", 2.5)
-WING_1_ROOT_Z_TRANSLATION = _FUSION_VALUES.get("WING_1_ROOT_Z_TRANSLATION", 12.0)
-WING_7_ROOT_Z_TRANSLATION = _FUSION_VALUES.get("WING_7_ROOT_Z_TRANSLATION", -12.0)
-WING_1_TIP_Z_CURVE = _FUSION_VALUES.get("WING_1_TIP_Z_CURVE", 50.0)
-WING_7_TIP_Z_CURVE = _FUSION_VALUES.get("WING_7_TIP_Z_CURVE", -20.0)
-Z_CURVE_EXPONENT = _FUSION_VALUES.get("Z_CURVE_EXPONENT", 2.5)
-THICKNESS_RATIO = _FUSION_VALUES.get("THICKNESS_RATIO", 0.12)
-POINT_COUNT = _FUSION_VALUES.get("POINT_COUNT", 80)
-COMPONENT_NAME = _FUSION_VALUES.get(
-    "COMPONENT_NAME",
-    "NACA0012 Half Wing Single Root Airfoil",
-)
-ROOT_SPAN_STATION = _FUSION_VALUES.get("ROOT_SPAN_STATION", 0.0)
+SWEEP_SECTION_FRACTIONS = _FUSION_VALUES["SWEEP_SECTION_FRACTIONS"]
+SWEEP_CURVE_EXPONENT = _FUSION_VALUES["SWEEP_CURVE_EXPONENT"]
+WING_1_ROOT_Z_TRANSLATION = _FUSION_VALUES["WING_1_ROOT_Z_TRANSLATION"]
+WING_7_ROOT_Z_TRANSLATION = _FUSION_VALUES["WING_7_ROOT_Z_TRANSLATION"]
+WING_1_TIP_Z_CURVE = _FUSION_VALUES["WING_1_TIP_Z_CURVE"]
+WING_7_TIP_Z_CURVE = _FUSION_VALUES["WING_7_TIP_Z_CURVE"]
+Z_CURVE_EXPONENT = _FUSION_VALUES["Z_CURVE_EXPONENT"]
+THICKNESS_RATIO = _FUSION_VALUES["THICKNESS_RATIO"]
+POINT_COUNT = _FUSION_VALUES["POINT_COUNT"]
+COMPONENT_NAME = _FUSION_VALUES["COMPONENT_NAME"]
+ROOT_SPAN_STATION = _FUSION_VALUES["ROOT_SPAN_STATION"]
 
 # Meshing-safe settings retained from the successful fix.
-TRAILING_EDGE_THICKNESS = _FUSION_VALUES.get("TRAILING_EDGE_THICKNESS", 0.5)
+TRAILING_EDGE_THICKNESS = _FUSION_VALUES["TRAILING_EDGE_THICKNESS"]
 # Prevent very small feathers from inheriting an unrealistically blunt
 # absolute trailing edge.
-MAX_TRAILING_EDGE_THICKNESS_TO_CHORD = _FUSION_VALUES.get(
-    "MAX_TRAILING_EDGE_THICKNESS_TO_CHORD",
-    0.08,
-)
-MIN_TIP_CHORD_SCALE = _FUSION_VALUES.get("MIN_TIP_CHORD_SCALE", 0.12)
-FEATHER_INCIDENCE_DEG = _FUSION_VALUES.get("FEATHER_INCIDENCE_DEG", 6.0)
-ROOT_FOIL_INCIDENCE_DEG = _FUSION_VALUES.get("ROOT_FOIL_INCIDENCE_DEG", 6.0)
+MAX_TRAILING_EDGE_THICKNESS_TO_CHORD = _FUSION_VALUES[
+    "MAX_TRAILING_EDGE_THICKNESS_TO_CHORD"
+]
+MIN_TIP_CHORD_SCALE = _FUSION_VALUES["MIN_TIP_CHORD_SCALE"]
+FEATHER_INCIDENCE_DEG = _FUSION_VALUES["FEATHER_INCIDENCE_DEG"]
+ROOT_FOIL_INCIDENCE_DEG = _FUSION_VALUES["ROOT_FOIL_INCIDENCE_DEG"]
 
 # Keep the aft feathers from packing too tightly at the root plane.
-MIN_FEATHER_ROOT_GAP = _FUSION_VALUES.get("MIN_FEATHER_ROOT_GAP", 3.0)
+MIN_FEATHER_ROOT_GAP = _FUSION_VALUES["MIN_FEATHER_ROOT_GAP"]
 
 # Main root settings.
-ROOT_AIRFOIL_LENGTH = _FUSION_VALUES.get("ROOT_AIRFOIL_LENGTH", 35.0)
+ROOT_AIRFOIL_LENGTH = _FUSION_VALUES["ROOT_AIRFOIL_LENGTH"]
 
 # Gap between the feather roots at x = 0 and the main-root rear face.
 # Set > 0 to create a physical separation along the span axis.
-ROOT_FEATHER_GAP = _FUSION_VALUES.get("ROOT_FEATHER_GAP", 40.0)
+ROOT_FEATHER_GAP = _FUSION_VALUES["ROOT_FEATHER_GAP"]
 
 # Increase this above 1.0 to make the main root airfoil larger.
 # This scales the chord about the center of the feather Y-footprint, which also
 # increases the airfoil thickness because THICKNESS_RATIO stays constant.
-ROOT_AIRFOIL_CHORD_SCALE = _FUSION_VALUES.get("ROOT_AIRFOIL_CHORD_SCALE", 1.0)
+ROOT_AIRFOIL_CHORD_SCALE = _FUSION_VALUES["ROOT_AIRFOIL_CHORD_SCALE"]
 
 # Translate the main root airfoil in the Y direction (along the chord). Positive is towards the trailing edge.
-ROOT_AIRFOIL_Y_TRANSLATION = _FUSION_VALUES.get("ROOT_AIRFOIL_Y_TRANSLATION", 0.0)
+ROOT_AIRFOIL_Y_TRANSLATION = _FUSION_VALUES["ROOT_AIRFOIL_Y_TRANSLATION"]
 
 # Number of intermediate sections in each transition loft (more = smoother curve).
-TRANSITION_SECTIONS = _FUSION_VALUES.get("TRANSITION_SECTIONS", 3)
-TRANSITION_PROFILE_SAMPLE_COUNT = _FUSION_VALUES.get(
-    "TRANSITION_PROFILE_SAMPLE_COUNT",
-    100,
-)
-TRANSITION_FAIRING_WALL_THICKNESS = _FUSION_VALUES.get(
-    "TRANSITION_FAIRING_WALL_THICKNESS",
-    0.0,
-)
+TRANSITION_SECTIONS = _FUSION_VALUES["TRANSITION_SECTIONS"]
+TRANSITION_PROFILE_SAMPLE_COUNT = _FUSION_VALUES["TRANSITION_PROFILE_SAMPLE_COUNT"]
+TRANSITION_FAIRING_WALL_THICKNESS = _FUSION_VALUES[
+    "TRANSITION_FAIRING_WALL_THICKNESS"
+]
 # Clearance applied to the sampled fairing envelope so it stays strictly
 # outside the feather-root profiles in both chordwise extent and thickness.
-TRANSITION_FAIRING_FOOTPRINT_MARGIN = _FUSION_VALUES.get(
-    "TRANSITION_FAIRING_FOOTPRINT_MARGIN",
-    0.5,
-)
+TRANSITION_FAIRING_FOOTPRINT_MARGIN = _FUSION_VALUES[
+    "TRANSITION_FAIRING_FOOTPRINT_MARGIN"
+]
 
 # Export as a single solid to avoid coincident/interior faces between the root,
 # fairing, and feather bodies.
-UNIFY_BODIES_FOR_EXPORT = _FUSION_VALUES.get("UNIFY_BODIES_FOR_EXPORT", True)
+UNIFY_BODIES_FOR_EXPORT = _FUSION_VALUES["UNIFY_BODIES_FOR_EXPORT"]
 EXPORT_GEOMETRY_METADATA = True
 METADATA_SOURCE_GRID_N_ETA = 64
 
@@ -156,11 +140,6 @@ def _effective_te_half_thickness(chord):
         chord * MAX_TRAILING_EDGE_THICKNESS_TO_CHORD,
     )
     return 0.5 * capped_te
-
-
-def _feather_root_gap(chord):
-    nominal_gap = chord * max(Y_SPACING_SCALE - 1.0, 0.0)
-    return max(nominal_gap, MIN_FEATHER_ROOT_GAP)
 
 
 def _to_sketch_space(sketch, x, y, z):
@@ -309,117 +288,12 @@ def _join_body_into_target(component, target_body, tool_body, feature_name):
     return target_body
 
 
-def _tip_span_station(wing_number, total_wings):
-    if total_wings < 1:
-        raise ValueError("total_wings must be greater than zero.")
-    if MID_WING_SPAN_SCALE < 1.0:
-        raise ValueError("MID_WING_SPAN_SCALE must be at least 1.0.")
-    if total_wings == 1:
-        return HALF_SPAN
-
-    midpoint = (total_wings + 1) / 2.0
-    edge_distance = midpoint - 1.0
-    normalized_distance = abs(wing_number - midpoint) / edge_distance
-    scale = MID_WING_SPAN_SCALE - (MID_WING_SPAN_SCALE - 1.0) * normalized_distance
-    return HALF_SPAN * scale
-
-
-def _wing_chord(wing_number, total_wings):
-    if total_wings < 1:
-        raise ValueError("total_wings must be greater than zero.")
-    if CENTER_WING_CHORD <= 0.0 or WING_1_CHORD <= 0.0 or WING_7_CHORD <= 0.0:
-        raise ValueError("All wing chord values must be greater than zero.")
-    if total_wings == 1:
-        return CENTER_WING_CHORD
-
-    midpoint = (total_wings + 1) / 2.0
-    if wing_number <= midpoint:
-        progress = (midpoint - wing_number) / max(midpoint - 1.0, 1.0)
-        return CENTER_WING_CHORD + (WING_1_CHORD - CENTER_WING_CHORD) * progress
-
-    progress = (wing_number - midpoint) / max(total_wings - midpoint, 1.0)
-    return CENTER_WING_CHORD + (WING_7_CHORD - CENTER_WING_CHORD) * progress
-
-
-def _tip_sweep_offset(wing_number, total_wings):
-    if total_wings < 1:
-        raise ValueError("total_wings must be greater than zero.")
-    if total_wings == 1:
-        return 0.0
-
-    midpoint = (total_wings + 1) / 2.0
-    if wing_number <= midpoint:
-        progress = (midpoint - wing_number) / max(midpoint - 1.0, 1.0)
-        return WING_1_TIP_SWEEP * progress
-
-    progress = (wing_number - midpoint) / max(total_wings - midpoint, 1.0)
-    return WING_7_TIP_SWEEP * progress
-
-
-def _curved_sweep_offset(total_tip_sweep, span_fraction):
-    if span_fraction < 0.0 or span_fraction > 1.0:
-        raise ValueError("span_fraction must be between 0 and 1.")
-    if SWEEP_CURVE_EXPONENT <= 0.0:
-        raise ValueError("SWEEP_CURVE_EXPONENT must be greater than zero.")
-
-    return total_tip_sweep * (span_fraction ** SWEEP_CURVE_EXPONENT)
-
-
-def _tip_z_curve_offset(wing_number, total_wings):
-    if total_wings < 1:
-        raise ValueError("total_wings must be greater than zero.")
-    if total_wings == 1:
-        return 0.0
-
-    midpoint = (total_wings + 1) / 2.0
-    if wing_number <= midpoint:
-        progress = (midpoint - wing_number) / max(midpoint - 1.0, 1.0)
-        return WING_1_TIP_Z_CURVE * progress
-
-    progress = (wing_number - midpoint) / max(total_wings - midpoint, 1.0)
-    return WING_7_TIP_Z_CURVE * progress
-
-
-def _root_z_translation(wing_number, total_wings):
-    if total_wings < 1:
-        raise ValueError("total_wings must be greater than zero.")
-    if total_wings == 1:
-        return 0.0
-
-    progress = (wing_number - 1) / max(total_wings - 1, 1)
-    return (
-        WING_1_ROOT_Z_TRANSLATION
-        + (WING_7_ROOT_Z_TRANSLATION - WING_1_ROOT_Z_TRANSLATION) * progress
-    )
-
-
-def _curved_z_offset(total_tip_z_curve, span_fraction):
-    if span_fraction < 0.0 or span_fraction > 1.0:
-        raise ValueError("span_fraction must be between 0 and 1.")
-    if Z_CURVE_EXPONENT <= 0.0:
-        raise ValueError("Z_CURVE_EXPONENT must be greater than zero.")
-
-    return total_tip_z_curve * (span_fraction ** Z_CURVE_EXPONENT)
-
-
-def _get_chord_scale(span_fraction):
-    rounding_start_fraction = 0.8
-    if span_fraction < rounding_start_fraction:
-        return 1.0
-
-    progress = (span_fraction - rounding_start_fraction) / (1.0 - rounding_start_fraction)
-    scale = math.sqrt(max(1.0 - progress**2, 0.0))
-    return max(scale, MIN_TIP_CHORD_SCALE)
-
-
 def _smoothstep(value):
     clamped = min(max(value, 0.0), 1.0)
     return clamped * clamped * (3.0 - 2.0 * clamped)
 
 
 def _shared_root_props_cm():
-    if not SHARED_GEOMETRY_AVAILABLE:
-        return None
     return [
         root_to_fusion_cm(root)
         for root in feather_root_properties(GEOMETRY_PARAMS)
@@ -427,15 +301,13 @@ def _shared_root_props_cm():
 
 
 def _shared_section_cm(wing_number, span_fraction):
-    if not SHARED_GEOMETRY_AVAILABLE:
-        return None
     return section_to_fusion_cm(
         feather_section(GEOMETRY_PARAMS, wing_number, span_fraction)
     )
 
 
 def _export_geometry_metadata():
-    if not SHARED_GEOMETRY_AVAILABLE or not EXPORT_GEOMETRY_METADATA:
+    if not EXPORT_GEOMETRY_METADATA:
         return
 
     write_geometry_metadata_json(
@@ -444,6 +316,11 @@ def _export_geometry_metadata():
     )
     write_source_grid_csv(
         _SCRIPT_DIR / "source_grid.csv",
+        GEOMETRY_PARAMS,
+        n_eta=METADATA_SOURCE_GRID_N_ETA,
+    )
+    write_simulator_geometry_renders(
+        _SCRIPT_DIR,
         GEOMETRY_PARAMS,
         n_eta=METADATA_SOURCE_GRID_N_ETA,
     )
@@ -910,37 +787,20 @@ def _build_wing(design):
     loft_features = wing_component.features.loftFeatures
 
     shared_root_props = _shared_root_props_cm()
-    if shared_root_props:
-        total_wings = len(shared_root_props)
-        wing_chords = [root['chord'] for root in shared_root_props]
-    else:
-        total_wings = ADDITIONAL_WINGS + 1
-        wing_chords = [_wing_chord(i, total_wings) for i in range(1, total_wings + 1)]
+    total_wings = len(shared_root_props)
+    wing_chords = [root['chord'] for root in shared_root_props]
 
     feather_root_props = []
     feather_root_profiles = []
     feather_bodies = []
-    trailing_edge_y = 0.0
 
     for i in range(1, total_wings + 1):
-        if shared_root_props:
-            root = shared_root_props[i - 1]
-            chord = root['chord']
-            y_offset = root['y']
-            z_offset = root['z']
-            root_gap = root['root_gap']
-            incidence_deg = root['incidence_deg']
-        else:
-            chord = wing_chords[i - 1]
-            if i == 1:
-                y_offset = trailing_edge_y
-                root_gap = 0.0
-            else:
-                root_gap = _feather_root_gap(chord)
-                y_offset = feather_root_props[i - 2]['y'] + chord + root_gap
-
-            z_offset = _root_z_translation(i, total_wings)
-            incidence_deg = FEATHER_INCIDENCE_DEG
+        root = shared_root_props[i - 1]
+        chord = root['chord']
+        y_offset = root['y']
+        z_offset = root['z']
+        root_gap = root['root_gap']
+        incidence_deg = root['incidence_deg']
 
         feather_root_props.append({
             'chord': chord,
@@ -969,23 +829,13 @@ def _build_wing(design):
     )
 
     for i in range(1, total_wings + 1):
-        wing_chord = wing_chords[i - 1]
-        y_offset = feather_root_props[i - 1]['y']
-        root_z_translation = feather_root_props[i - 1]['z']
         root_gap = feather_root_props[i - 1]['root_gap']
         incidence_deg = feather_root_props[i - 1]['incidence_deg']
 
         terminal_section = _shared_section_cm(i, SWEEP_SECTION_FRACTIONS[-1])
-        if terminal_section:
-            tip_span_station = terminal_section['tip_span_station']
-            tip_sweep_offset = terminal_section['tip_sweep_offset']
-            tip_z_curve_offset = terminal_section['tip_z_curve_offset']
-            terminal_tip_chord = terminal_section['chord']
-        else:
-            tip_span_station = _tip_span_station(i, total_wings)
-            tip_sweep_offset = _tip_sweep_offset(i, total_wings)
-            tip_z_curve_offset = _tip_z_curve_offset(i, total_wings)
-            terminal_tip_chord = wing_chord * _get_chord_scale(SWEEP_SECTION_FRACTIONS[-1])
+        tip_sweep_offset = terminal_section['tip_sweep_offset']
+        tip_z_curve_offset = terminal_section['tip_z_curve_offset']
+        terminal_tip_chord = terminal_section['chord']
 
         loft_input = loft_features.createInput(adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
         loft_input.isSolid = True
@@ -993,24 +843,11 @@ def _build_wing(design):
 
         for span_fraction in SWEEP_SECTION_FRACTIONS[1:]:
             shared_section = _shared_section_cm(i, span_fraction)
-            if shared_section:
-                span_station = shared_section['span_station']
-                current_chord = shared_section['chord']
-                section_y_offset = shared_section['trailing_edge_y']
-                section_z_offset = shared_section['z']
-                incidence_deg = shared_section['incidence_deg']
-            else:
-                span_station = tip_span_station * span_fraction
-                chord_scale = _get_chord_scale(span_fraction)
-                current_chord = wing_chord * chord_scale
-
-                base_y_offset = y_offset + _curved_sweep_offset(tip_sweep_offset, span_fraction)
-                y_adjustment = 0.5 * (wing_chord - current_chord)
-                section_y_offset = base_y_offset - y_adjustment
-                section_z_offset = root_z_translation + _curved_z_offset(
-                    tip_z_curve_offset,
-                    span_fraction,
-                )
+            span_station = shared_section['span_station']
+            current_chord = shared_section['chord']
+            section_y_offset = shared_section['trailing_edge_y']
+            section_z_offset = shared_section['z']
+            incidence_deg = shared_section['incidence_deg']
 
             section_plane = _create_offset_plane(
                 wing_component,

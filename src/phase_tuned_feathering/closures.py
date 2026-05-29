@@ -38,12 +38,13 @@ class ClosureParams:
     beta: float = 0.7
     u_c: float | None = None
     coherence_x: float = 0.30
-    coherence_y: float = 0.70
+    coherence_y: float = 0.30
     coherence_z: float = 0.30
     incidence_amplitude_coeff: float = 0.0
     incidence_ref_deg: float = 0.0
     incidence_delay_per_rad: float = 0.0
     coherence_model: str = "exponential"
+    strouhal_scale: float = 0.03
 
     def with_coherence_model(self, coherence_model: str) -> "ClosureParams":
         return replace(self, coherence_model=coherence_model)
@@ -98,7 +99,7 @@ def source_autospectra(
     u_c = convection_velocity(flow, closures)
     spectra: list[float] = []
     for chord, incidence_deg in zip(grid.chords, grid.incidence_deg):
-        chi = omega * chord / u_c
+        chi = omega * chord * closures.strouhal_scale / u_c
         amplitude_factor = incidence_amplitude_factor(incidence_deg, closures)
         spectrum = (
             closures.cq
@@ -122,7 +123,7 @@ def transfer_kernel(
     omega = angular_frequency(frequency_hz)
     mach = flow.mach
     denominator = max((1.0 - mach * observer_direction[0]) ** 2, 1.0e-12)
-    return (omega * omega / (flow.c0 * flow.c0)) / denominator
+    return (omega / flow.c0) / denominator
 
 
 def transfer_weights(

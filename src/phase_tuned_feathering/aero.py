@@ -28,18 +28,6 @@ def _thin_airfoil_proxy(alpha_deg: float) -> tuple[float, float]:
     return cl, cd
 
 
-def _try_aerosandbox_proxy(alpha_deg: float) -> tuple[float, float] | None:
-    try:
-        import aerosandbox as asb  # type: ignore  # noqa: F401
-    except Exception:
-        return None
-
-    # Keep the optional path conservative: AeroSandbox APIs vary by version, so
-    # use the local thin-airfoil proxy unless a project-specific AeroSandbox
-    # polar wrapper is added later.
-    return _thin_airfoil_proxy(alpha_deg)
-
-
 def screen_aero(
     params: WingGeometryParams,
     flow: FlowConfig | None = None,
@@ -52,7 +40,7 @@ def screen_aero(
 ) -> AeroScreenResult:
     flow = FlowConfig() if flow is None else flow
     roots = feather_root_properties(params)
-    method = "aerosandbox-proxy" if _try_aerosandbox_proxy(0.0) is not None else "thin-airfoil-proxy"
+    method = "thin-airfoil-proxy"
     issues: list[str] = []
     values: dict[str, float] = {}
 
@@ -80,8 +68,7 @@ def screen_aero(
             if root.root_gap < required_gap:
                 issues.append(f"feather {root.feather_index} root gap below minimum")
 
-        proxy = _try_aerosandbox_proxy(root.incidence_deg)
-        cl, cd = proxy if proxy is not None else _thin_airfoil_proxy(root.incidence_deg)
+        cl, cd = _thin_airfoil_proxy(root.incidence_deg)
         cl_values.append(cl)
         cd_values.append(cd)
 

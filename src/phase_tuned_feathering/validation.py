@@ -2,7 +2,7 @@
 
 The validation layer compares the semi-analytical acoustic model against
 external simulated performance data. It intentionally keeps a simple CSV schema
-so results from AeroSandbox wrappers, panel-method scripts, CFD-lite studies,
+so results from panel-method scripts, CFD-lite studies,
 or later high-fidelity CFD can be ingested without changing the model code.
 """
 
@@ -201,9 +201,31 @@ def compare_spectral_results(
     theory: SpectralResult,
     simulation: SimulationDataset,
     flow: FlowConfig | None = None,
+    calibrate_level: bool = True,
+    calibration_split: str = "calibration",
 ) -> ComparisonResult:
     flow = FlowConfig() if flow is None else flow
     lookup = _prediction_lookup(theory)
+    scale_factor = 1.0
+    level_offset_db = 0.0
+
+    if calibrate_level:
+        calibration_errors: list[float] = []
+        calibration_weights: list[float] = []
+        for record in simulation.records:
+            if record.split != calibration_split:
+                continue
+            key = (record.frequency_hz, _direction_key(record.direction))
+            if key not in lookup:
+                continue
+            theory_level = spectral_level_db(lookup[key], flow)
+            simulated_level = spectral_level_db(record.spp, flow)
+            calibration_errors.append(theory_level - simulated_level)
+            calibration_weights.append(record.weight)
+        if calibration_errors:
+            level_offset_db = -_weighted_mean(calibration_errors, calibration_weights)
+            scale_factor = 10.0 ** (level_offset_db / 10.0)
+
     rows: list[ComparisonRow] = []
     for record in simulation.records:
         key = (record.frequency_hz, _direction_key(record.direction))
@@ -212,7 +234,7 @@ def compare_spectral_results(
                 "Theory result does not contain simulation point "
                 f"frequency={record.frequency_hz}, direction={record.direction}."
             )
-        theory_spp = lookup[key]
+        theory_spp = lookup[key] * scale_factor
         simulated_level = spectral_level_db(record.spp, flow)
         theory_level = spectral_level_db(theory_spp, flow)
         rows.append(
@@ -230,7 +252,11 @@ def compare_spectral_results(
                 weight=record.weight,
             )
         )
-    return ComparisonResult(tuple(rows), summarize_comparison(rows))
+    summary = summarize_comparison(rows)
+    for values in summary.values():
+        values["theory_scale_factor"] = scale_factor
+        values["theory_level_offset_db"] = level_offset_db
+    return ComparisonResult(tuple(rows), summary)
 
 
 def compare_theory_to_simulation(
@@ -240,6 +266,7 @@ def compare_theory_to_simulation(
     closures: ClosureParams | None = None,
     n_eta: int = 32,
     source_chord_fraction: float = 1.0,
+    calibrate_level: bool = True,
 ) -> ComparisonResult:
     params = default_geometry() if params is None else params
     flow = FlowConfig() if flow is None else flow
@@ -256,7 +283,12 @@ def compare_theory_to_simulation(
         flow,
         closures,
     )
-    return compare_spectral_results(theory, simulation, flow)
+    return compare_spectral_results(
+        theory,
+        simulation,
+        flow,
+        calibrate_level=calibrate_level,
+    )
 
 
 def _weighted_mean(values: Iterable[float], weights: Iterable[float]) -> float:
@@ -288,7 +320,10 @@ def _lobe_angle_errors(rows: tuple[ComparisonRow, ...]) -> tuple[float, ...]:
             continue
         theory_peak = max(subset, key=lambda row: row.theory_spp)
         simulated_peak = max(subset, key=lambda row: row.simulated_spp)
-        errors.append(_angle_deg(theory_peak.direction, simulated_peak.direction))
+        angle_direct = _angle_deg(theory_peak.direction, simulated_peak.direction)
+        anti_simulated = tuple(-x for x in simulated_peak.direction)
+        angle_anti = _angle_deg(theory_peak.direction, anti_simulated)
+        errors.append(min(angle_direct, angle_anti))
     return tuple(errors)
 
 
@@ -395,8 +430,8 @@ def generate_synthetic_simulation_dataset(
     flow: FlowConfig | None = None,
     closures: ClosureParams | None = None,
     observers: ObserverGrid | None = None,
-    frequencies_hz: tuple[float, ...] = (500.0, 1000.0, 2000.0),
-    n_eta: int = 16,
+    frequencies_hz: tuple[float, ...] = (250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0),
+    n_eta: int = 48,
     seed: int = 7,
     case_id: str = "synthetic_sim",
 ) -> SimulationDataset:
@@ -445,8 +480,8 @@ def write_synthetic_simulation_csv(
     flow: FlowConfig | None = None,
     closures: ClosureParams | None = None,
     observers: ObserverGrid | None = None,
-    frequencies_hz: tuple[float, ...] = (500.0, 1000.0, 2000.0),
-    n_eta: int = 16,
+    frequencies_hz: tuple[float, ...] = (250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0),
+    n_eta: int = 48,
     seed: int = 7,
 ) -> Path:
     dataset = generate_synthetic_simulation_dataset(

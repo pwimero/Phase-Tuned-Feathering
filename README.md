@@ -13,6 +13,7 @@ Core entry points:
 - `phase_tuned_feathering.directivity(...)`
 - `phase_tuned_feathering.screen_aero(...)`
 - `phase_tuned_feathering.optimize_stage(...)`
+- `phase_tuned_feathering.simulate_surrogate_dataset(...)`
 - `phase_tuned_feathering.compare_theory_to_simulation(...)`
 
 The package uses SI units internally. The Fusion script converts those values
@@ -26,9 +27,27 @@ Run the complete smoke-tested comparison pipeline:
 scripts/run_validation_pipeline.sh
 ```
 
-By default this creates deterministic synthetic simulation data so the
-comparison machinery can be exercised before external simulation results exist.
-When real simulated performance data are available, provide them as:
+By default this creates low-cost surrogate aeroacoustic simulation data from
+the shared feather geometry, then compares the theoretical model against that
+surrogate. The surrogate uses local low-order aero states plus calibrated,
+BPM/TNO-inspired self-noise mechanisms; it is not full CFD.
+
+The comparison applies one scalar source-level calibration using rows marked
+`split=calibration`, then reports the held-out `split=validation` error with
+that fixed scale. To inspect raw uncalibrated error:
+
+```bash
+NO_CALIBRATE_LEVEL=1 scripts/run_validation_pipeline.sh
+```
+
+For a smoke test that uses theory plus deterministic perturbation instead of
+the surrogate, run:
+
+```bash
+SIM_MODE=synthetic scripts/run_validation_pipeline.sh
+```
+
+When external simulated performance data are available, provide them as:
 
 ```bash
 SIM_CSV=/path/to/simulation.csv scripts/run_validation_pipeline.sh
@@ -52,6 +71,23 @@ Pipeline outputs are written to `outputs/validation` by default:
 
 - `geometry_metadata.json`
 - `source_grid.csv`
-- `synthetic_simulation.csv` when no `SIM_CSV` is provided
+- `simulator_geometry_plan.svg`
+- `simulator_geometry_side.svg`
+- `simulator_geometry_front.svg`
+- `simulator_geometry_isometric.svg`
+- `surrogate_simulation.csv` by default
+- `synthetic_simulation.csv` when `SIM_MODE=synthetic`
 - `theory_vs_simulation.csv`
 - `validation_summary.json`
+- `validation_scatter.svg`
+- `validation_spectrum_overlay.svg`
+- `validation_error_by_frequency.svg`
+- `validation_error_histogram.svg`
+- `validation_directivity.svg`
+- `validation_error_heatmap.svg`
+
+The SVG files show the exact source-line geometry seen by the simulator and
+the acoustic model. They are not Fusion solid-body renders; they show source
+points, feather IDs, and loading-vector directions in paper coordinates.
+The validation SVGs show theory-vs-simulation agreement, spectral overlays,
+error distributions, error by frequency, and directivity comparison.
