@@ -26,8 +26,7 @@ from .geometry import (
     fusion_parameter_values,
     source_grid,
 )
-from .metrics import band_spl, directivity, sector_spl, total_acoustic_proxy
-from .observers import ObserverGrid, Sector
+from .observers import ObserverGrid
 from .io import geometry_metadata, write_geometry_metadata_json, write_source_grid_csv
 from .simulation import (
     SurrogateAeroState,
@@ -73,7 +72,6 @@ __all__ = [
     "FeatherSection",
     "FlowConfig",
     "ObserverGrid",
-    "Sector",
     "SimulationDataset",
     "SimulationRecord",
     "SourceGrid",
@@ -81,13 +79,11 @@ __all__ = [
     "SurrogateAeroState",
     "SurrogateNoiseConfig",
     "WingGeometryParams",
-    "band_spl",
     "compare_spectral_results",
     "compare_theory_to_simulation",
     "comparison_summary_text",
     "default_geometry",
     "directivity_comparison_svg",
-    "directivity",
     "error_by_frequency_svg",
     "error_histogram_svg",
     "evaluate_spp",
@@ -104,13 +100,11 @@ __all__ = [
     "local_aero_states",
     "load_simulation_csv",
     "screen_aero",
-    "sector_spl",
     "simulate_surrogate_dataset",
     "source_grid",
     "source_grid_svg",
     "spectrum_overlay_svg",
     "theory_vs_simulation_scatter_svg",
-    "total_acoustic_proxy",
     "write_comparison_csv",
     "write_geometry_metadata_json",
     "write_simulation_csv",

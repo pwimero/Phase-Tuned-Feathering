@@ -8,7 +8,7 @@ from typing import Tuple, List
 from .acoustics_torch import evaluate_spp_torch
 from .closures import FlowConfig, ClosureParams
 from .geometry import WingGeometryParams, SourceGrid, default_geometry
-from .observers import ObserverGrid, Sector
+from .observers import ObserverGrid
 import concurrent.futures
 
 
@@ -19,8 +19,7 @@ class GAConfig:
     closures: ClosureParams = field(default_factory=ClosureParams)
     observers: ObserverGrid = field(default_factory=lambda: ObserverGrid.spherical(10, 16))
     frequencies_hz: tuple[float, ...] = (500.0, 1000.0, 2000.0)
-    target_sector: Sector = field(default_factory=lambda: Sector((0.0, 0.0, 1.0), 70.0))
-    suppressed_sector: Sector = field(default_factory=lambda: Sector((0.0, 0.0, -1.0), 70.0))
+    target_pattern_db: tuple[float, ...] = field(default_factory=tuple)
     n_eta: int = 16
     popsize: int = 10
     maxiter: int = 30
@@ -235,14 +234,7 @@ def _objective_torch(
     loading_directions = torch.tensor(load_list, dtype=torch.float32, device=device)
     weights = torch.tensor(weights_list, dtype=torch.float32, device=device)
     
-    target_spp_list = []
-    suppress_spp_list = []
-    
-    target_weights = torch.tensor(config.target_sector.observer_weights(config.observers), dtype=torch.float32, device=device)
-    suppress_weights = torch.tensor(config.suppressed_sector.observer_weights(config.observers), dtype=torch.float32, device=device)
-    
-    target_w_sum = target_weights.sum()
-    suppress_w_sum = suppress_weights.sum()
+    spp_list = []
     
     # Evaluate for each frequency on GPU
     for freq in config.frequencies_hz:
@@ -250,41 +242,33 @@ def _objective_torch(
             points, chords, incidence_deg, loading_directions, weights,
             config.observers, freq, config.flow, config.closures, device
         )
-        
-        target_spp = (spp * target_weights).sum(dim=1) / target_w_sum
-        target_spp_list.append(target_spp)
-        
-        suppress_spp = (spp * suppress_weights).sum(dim=1) / suppress_w_sum
-        suppress_spp_list.append(suppress_spp)
+        spp_list.append(spp)
         
     # Numerical integration (trapz) over frequencies
-    # For now, just a simple sum works fine if the frequencies are equally spaced 
-    # or if we match the old logic (the old code did _trapz but here I'll use a simple sum 
-    # as an approximation or exact match if len(freqs)==1).
-    # Wait, the original _objective used `sector_spl` which does trapz. Let's do trapz!
-    
     freqs = torch.tensor(config.frequencies_hz, dtype=torch.float32, device=device)
     if len(freqs) == 1:
-        target_sum = target_spp_list[0]
-        suppress_sum = suppress_spp_list[0]
+        spp_sum = spp_list[0]
     else:
-        # Stack lists -> (P, F)
-        target_spp_stack = torch.stack(target_spp_list, dim=1)
-        suppress_spp_stack = torch.stack(suppress_spp_list, dim=1)
-        
-        # trapz over F
+        spp_stack = torch.stack(spp_list, dim=1)  # (P, F, O)
         df = freqs[1:] - freqs[:-1]
-        target_sum = 0.5 * torch.sum(df * (target_spp_stack[:, :-1] + target_spp_stack[:, 1:]), dim=1)
-        suppress_sum = 0.5 * torch.sum(df * (suppress_spp_stack[:, :-1] + suppress_spp_stack[:, 1:]), dim=1)
+        df = df.unsqueeze(0).unsqueeze(-1)  # (1, F-1, 1)
+        spp_sum = 0.5 * torch.sum(df * (spp_stack[:, :-1, :] + spp_stack[:, 1:, :]), dim=1)  # (P, O)
     
     # Convert to dB safely
     p_ref_sq = config.flow.p_ref**2
-    target_db = 10.0 * torch.log10(torch.clamp(target_sum / p_ref_sq, min=1e-12))
-    suppress_db = 10.0 * torch.log10(torch.clamp(suppress_sum / p_ref_sq, min=1e-12))
+    spp_db = 10.0 * torch.log10(torch.clamp(spp_sum / p_ref_sq, min=1e-12))
     
-    # Fitness = -(Target SPL - Suppressed SPL) + penalties
-    # We want to minimize this.
-    fitness = -(target_db - suppress_db)
+    # Normalized Shape Matching (Relative Directivity)
+    sim_peak, _ = torch.max(spp_db, dim=1, keepdim=True)
+    sim_normalized = spp_db - sim_peak  # (P, O)
+    
+    target = torch.tensor(config.target_pattern_db, dtype=torch.float32, device=device)  # (O,)
+    target_peak = torch.max(target)
+    target_normalized = target - target_peak
+    target_normalized = target_normalized.unsqueeze(0).expand(P, -1)  # (P, O)
+    
+    # Fitness is Mean Squared Error (MSE)
+    fitness = torch.mean((sim_normalized - target_normalized)**2, dim=1)  # (P,)
     
     # Add penalties
     for i in range(P):
@@ -313,12 +297,10 @@ def run_optimization_torch(config: GAConfig) -> Tuple[WingGeometryParams, float,
         )
     
     elapsed = time.time() - start_time
-    # Note: fitness is Suppress - Target. So actual "score" (Target - Suppress) is -fitness.
-    score = -best_fitness
     print(f"PyTorch GA Completed in {elapsed:.1f}s.")
-    print(f"  Best Score (Target - Suppressed): {score:.2f} dB")
+    print(f"  Best Score (Normalized MSE): {best_fitness:.2f} dB^2")
     
     best_genes_float = [float(x) for x in best_genes]
     best_params = _unpack_genes(best_genes_float, config.base_params)
     
-    return best_params, float(score), True
+    return best_params, float(best_fitness), True

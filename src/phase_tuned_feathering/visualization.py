@@ -104,12 +104,13 @@ def _observer_label(direction: tuple[float, float, float]) -> str:
     )
 
 
-def _polyline(points: list[tuple[float, float]], color: str, width: float = 2.0) -> str:
+def _polyline(points: list[tuple[float, float]], color: str, width: float = 2.0, stroke_dasharray: str = "") -> str:
     coordinates = " ".join(f"{x:.2f},{y:.2f}" for x, y in points)
+    dash_attr = f' stroke-dasharray="{stroke_dasharray}"' if stroke_dasharray else ""
     return (
         f'<polyline points="{coordinates}" fill="none" '
         f'stroke="{color}" stroke-width="{width:.2f}" '
-        'stroke-linecap="round" stroke-linejoin="round" />'
+        f'stroke-linecap="round" stroke-linejoin="round"{dash_attr} />'
     )
 
 
@@ -858,13 +859,33 @@ def directivity_comparison_svg(
             f"<title>theory, {_observer_label(row.direction)}, "
             f"{row.theory_level_db:.3f} dB</title></circle>"
         )
-    svg.append(
-        f'<rect x="{width - 190}" y="58" width="150" height="58" fill="#fff" stroke="#ddd" />'
-        f'<line x1="{width - 172}" y1="80" x2="{width - 132}" y2="80" stroke="#d62728" stroke-width="3" />'
-        f'<text x="{width - 122}" y="84" font-family="Arial, sans-serif" font-size="13">simulated</text>'
-        f'<line x1="{width - 172}" y1="104" x2="{width - 132}" y2="104" stroke="#1f77b4" stroke-width="3" />'
-        f'<text x="{width - 122}" y="108" font-family="Arial, sans-serif" font-size="13">theory</text>'
-    )
+    has_target = any(row.target_level_db is not None for row in rows)
+    if has_target:
+        sim_peak = max(row.simulated_level_db for row in rows)
+        target_raw_peak = max(row.target_level_db for row in rows if row.target_level_db is not None)
+        offset = sim_peak - target_raw_peak
+        
+        target_points = [polar_point(row, row.target_level_db + offset) for row in rows if row.target_level_db is not None]
+        if len(target_points) > 1:
+            svg.append(_polyline(target_points + [target_points[0]], "#2ca02c", width=2.4, stroke_dasharray="6,4"))
+            
+        svg.append(
+            f'<rect x="{width - 190}" y="58" width="150" height="82" fill="#fff" stroke="#ddd" />'
+            f'<line x1="{width - 172}" y1="80" x2="{width - 132}" y2="80" stroke="#d62728" stroke-width="3" />'
+            f'<text x="{width - 122}" y="84" font-family="Arial, sans-serif" font-size="13">simulated</text>'
+            f'<line x1="{width - 172}" y1="104" x2="{width - 132}" y2="104" stroke="#1f77b4" stroke-width="3" />'
+            f'<text x="{width - 122}" y="108" font-family="Arial, sans-serif" font-size="13">theory</text>'
+            f'<line x1="{width - 172}" y1="128" x2="{width - 132}" y2="128" stroke="#2ca02c" stroke-width="3" stroke-dasharray="6,4" />'
+            f'<text x="{width - 122}" y="132" font-family="Arial, sans-serif" font-size="13">target shape</text>'
+        )
+    else:
+        svg.append(
+            f'<rect x="{width - 190}" y="58" width="150" height="58" fill="#fff" stroke="#ddd" />'
+            f'<line x1="{width - 172}" y1="80" x2="{width - 132}" y2="80" stroke="#d62728" stroke-width="3" />'
+            f'<text x="{width - 122}" y="84" font-family="Arial, sans-serif" font-size="13">simulated</text>'
+            f'<line x1="{width - 172}" y1="104" x2="{width - 132}" y2="104" stroke="#1f77b4" stroke-width="3" />'
+            f'<text x="{width - 122}" y="108" font-family="Arial, sans-serif" font-size="13">theory</text>'
+        )
     svg.append(
         f'<text x="{center_x:.1f}" y="{height - 28}" font-family="Arial, sans-serif" '
         'font-size="13" text-anchor="middle" fill="#333">'

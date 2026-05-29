@@ -88,25 +88,3 @@ class ObserverGrid:
                 weights.append(polar_weight)
         return cls(tuple(directions), tuple(weights))
 
-
-@dataclass(frozen=True)
-class Sector:
-    center: tuple[float, float, float]
-    half_angle_deg: float
-    weight: float = 1.0
-
-    def __post_init__(self) -> None:
-        if self.half_angle_deg <= 0.0 or self.half_angle_deg > 180.0:
-            raise ValueError("half_angle_deg must be in (0, 180].")
-        object.__setattr__(self, "center", unit_direction(self.center))
-
-    def contains(self, direction: Sequence[float]) -> bool:
-        candidate = unit_direction(direction)
-        dot = sum(candidate[index] * self.center[index] for index in range(3))
-        return dot >= math.cos(math.radians(self.half_angle_deg))
-
-    def observer_weights(self, observers: ObserverGrid) -> tuple[float, ...]:
-        return tuple(
-            observer_weight * self.weight if self.contains(direction) else 0.0
-            for direction, observer_weight in zip(observers.directions, observers.weights)
-        )

@@ -14,6 +14,7 @@ import json
 import math
 import random
 from pathlib import Path
+import typing
 from typing import Any, Iterable
 
 from .acoustics import SpectralResult, evaluate_spp
@@ -96,6 +97,7 @@ class ComparisonRow:
     error_db: float
     relative_error: float
     weight: float
+    target_level_db: float | None = None
 
 
 @dataclass(frozen=True)
@@ -203,6 +205,7 @@ def compare_spectral_results(
     flow: FlowConfig | None = None,
     calibrate_level: bool = True,
     calibration_split: str = "calibration",
+    target_fn: typing.Callable[[tuple[float, float, float]], float] | None = None,
 ) -> ComparisonResult:
     flow = FlowConfig() if flow is None else flow
     lookup = _prediction_lookup(theory)
@@ -248,8 +251,9 @@ def compare_spectral_results(
                 simulated_level_db=simulated_level,
                 theory_level_db=theory_level,
                 error_db=theory_level - simulated_level,
-                relative_error=(theory_spp - record.spp) / max(record.spp, 1.0e-300),
+                relative_error=abs(theory_level - simulated_level) / max(abs(simulated_level), 1.0e-12),
                 weight=record.weight,
+                target_level_db=target_fn(record.direction) if target_fn else None,
             )
         )
     summary = summarize_comparison(rows)
@@ -267,6 +271,7 @@ def compare_theory_to_simulation(
     n_eta: int = 32,
     source_chord_fraction: float = 1.0,
     calibrate_level: bool = True,
+    target_fn: typing.Callable[[tuple[float, float, float]], float] | None = None,
 ) -> ComparisonResult:
     params = default_geometry() if params is None else params
     flow = FlowConfig() if flow is None else flow
@@ -288,6 +293,7 @@ def compare_theory_to_simulation(
         simulation,
         flow,
         calibrate_level=calibrate_level,
+        target_fn=target_fn,
     )
 
 
@@ -389,6 +395,7 @@ def write_comparison_csv(
                 "error_db",
                 "relative_error",
                 "weight",
+                "target_level_db",
             ]
         )
         for row in result.rows:
@@ -407,6 +414,7 @@ def write_comparison_csv(
                     row.error_db,
                     row.relative_error,
                     row.weight,
+                    row.target_level_db if row.target_level_db is not None else "",
                 ]
             )
     return output_path
