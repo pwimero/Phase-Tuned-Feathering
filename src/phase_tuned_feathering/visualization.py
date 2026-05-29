@@ -813,6 +813,13 @@ def directivity_comparison_svg(
         )
     svg.append(f'<line x1="{center_x - radius:.1f}" y1="{center_y:.1f}" x2="{center_x + radius:.1f}" y2="{center_y:.1f}" stroke="#d1d5db" />')
     svg.append(f'<line x1="{center_x:.1f}" y1="{center_y - radius:.1f}" x2="{center_x:.1f}" y2="{center_y + radius:.1f}" stroke="#d1d5db" />')
+    
+    # Overlay the side-view wing render (since plot uses X and Z for angles)
+    svg.append(
+        f'<image href="simulator_geometry_side.svg" '
+        f'x="{center_x - radius:.1f}" y="{center_y - radius:.1f}" '
+        f'width="{radius * 2:.1f}" height="{radius * 2:.1f}" opacity="0.15" />'
+    )
     for angle_deg in (-90, -45, 0, 45, 90, 135, 180):
         angle = math.radians(angle_deg)
         x = center_x + radius * math.cos(angle)

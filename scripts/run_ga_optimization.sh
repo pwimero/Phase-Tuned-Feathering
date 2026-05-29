@@ -7,9 +7,9 @@ cd "$ROOT_DIR"
 export PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}"
 
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/optimization}"
-POPSIZE="${POPSIZE:-10}"
-MAXITER="${MAXITER:-30}"
-N_ETA="${N_ETA:-48}"
+POPSIZE="${POPSIZE:-100}"
+MAXITER="${MAXITER:-100}"
+N_ETA="${N_ETA:-60}"
 SCENARIOS=("quiet_ground" "forward_focus")
 
 SECONDS=0

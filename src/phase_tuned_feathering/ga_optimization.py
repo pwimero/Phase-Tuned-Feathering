@@ -7,7 +7,9 @@ from typing import Tuple, List
 
 from .acoustics_torch import evaluate_spp_torch
 from .closures import FlowConfig, ClosureParams
-from .geometry import WingGeometryParams, SourceGrid
+from .geometry import WingGeometryParams, SourceGrid, default_geometry
+from .observers import ObserverGrid, Sector
+import concurrent.futures
 
 
 @dataclass(frozen=True)
@@ -93,6 +95,33 @@ def _get_bounds(config: GAConfig) -> list[tuple[float, float]]:
     return bounds
 
 
+def _eval_cpu_worker(g, base_params, n_eta, flow):
+    from .geometry import source_grid
+    from .aero import screen_aero
+    
+    params = _unpack_genes(g, base_params)
+    grid = source_grid(params, n_eta=n_eta)
+    
+    aero = screen_aero(params, flow)
+    aero_penalty = 100.0 * len(aero.issues)
+    
+    incidence = params.incidence_angles_deg()
+    alpha_penalty = sum(
+        (incidence[index + 1] - incidence[index]) ** 2
+        for index in range(len(incidence) - 1)
+    )
+    reg_penalty = 0.05 * alpha_penalty
+    
+    return (
+        grid.points,
+        grid.chords,
+        grid.incidence_deg,
+        grid.loading_directions,
+        grid.weights,
+        aero_penalty,
+        reg_penalty
+    )
+
 
 def differential_evolution_torch(
     objective_fn,
@@ -103,6 +132,7 @@ def differential_evolution_torch(
     recombination: float = 0.7,
     seed: int = 42,
     device: torch.device = None,
+    patience: int = 10,
 ):
     if device is None:
         device = torch.device("cpu")
@@ -122,6 +152,8 @@ def differential_evolution_torch(
     
     best_idx = torch.argmin(fitness)
     best_fitness = fitness[best_idx].item()
+    
+    no_improve_count = 0
     
     for gen in range(maxiter):
         # Create mutants (P, D)
@@ -154,10 +186,19 @@ def differential_evolution_torch(
         
         # Track best
         best_idx = torch.argmin(fitness)
-        if fitness[best_idx].item() < best_fitness:
-            best_fitness = fitness[best_idx].item()
+        current_best = fitness[best_idx].item()
+        
+        if current_best < best_fitness - 1e-5:
+            best_fitness = current_best
+            no_improve_count = 0
+        else:
+            no_improve_count += 1
             
         print(f"Generation {gen+1}/{maxiter} - Best Fitness: {best_fitness:.4f}")
+        
+        if no_improve_count >= patience:
+            print(f"Early stopping at generation {gen+1}: No improvement in {patience} generations.")
+            break
         
     return pop[best_idx].cpu().numpy(), best_fitness
 
@@ -166,27 +207,27 @@ def _objective_torch(
     genes_tensor: torch.Tensor,
     config: GAConfig,
     device: torch.device,
+    executor: concurrent.futures.ProcessPoolExecutor,
 ) -> torch.Tensor:
     P = genes_tensor.shape[0]
     genes_np = genes_tensor.cpu().numpy()
     
-    points_list = []
-    chords_list = []
-    inc_list = []
-    load_list = []
-    weights_list = []
+    # Run CPU-bound grid generation and aero screening in parallel
+    results = list(executor.map(
+        _eval_cpu_worker, 
+        [genes_np[i] for i in range(P)],
+        [config.base_params] * P,
+        [config.n_eta] * P,
+        [config.flow] * P
+    ))
     
-    from .geometry import source_grid
-    
-    for i in range(P):
-        g = genes_np[i]
-        params = _unpack_genes(g, config.base_params)
-        grid = source_grid(params, n_eta=config.n_eta)
-        points_list.append(grid.points)
-        chords_list.append(grid.chords)
-        inc_list.append(grid.incidence_deg)
-        load_list.append(grid.loading_directions)
-        weights_list.append(grid.weights)
+    points_list = [r[0] for r in results]
+    chords_list = [r[1] for r in results]
+    inc_list = [r[2] for r in results]
+    load_list = [r[3] for r in results]
+    weights_list = [r[4] for r in results]
+    aero_penalties = [r[5] for r in results]
+    reg_penalties = [r[6] for r in results]
         
     points = torch.tensor(points_list, dtype=torch.float32, device=device)
     chords = torch.tensor(chords_list, dtype=torch.float32, device=device)
@@ -241,28 +282,13 @@ def _objective_torch(
     target_db = 10.0 * torch.log10(torch.clamp(target_sum / p_ref_sq, min=1e-12))
     suppress_db = 10.0 * torch.log10(torch.clamp(suppress_sum / p_ref_sq, min=1e-12))
     
-    from .aero import screen_aero
-    
     # Fitness = -(Target SPL - Suppressed SPL) + penalties
     # We want to minimize this.
     fitness = -(target_db - suppress_db)
     
-    # Add penalties loop
+    # Add penalties
     for i in range(P):
-        g = genes_np[i]
-        params = _unpack_genes(g, config.base_params)
-        
-        aero = screen_aero(params, config.flow)
-        aero_penalty = 100.0 * len(aero.issues)
-        
-        incidence = params.incidence_angles_deg()
-        alpha_penalty = sum(
-            (incidence[index + 1] - incidence[index]) ** 2
-            for index in range(len(incidence) - 1)
-        )
-        reg_penalty = 0.05 * alpha_penalty
-        
-        fitness[i] += aero_penalty + reg_penalty
+        fitness[i] += aero_penalties[i] + reg_penalties[i]
         
     return fitness
 
@@ -274,16 +300,17 @@ def run_optimization_torch(config: GAConfig) -> Tuple[WingGeometryParams, float,
     
     start_time = time.time()
     
-    best_genes, best_fitness = differential_evolution_torch(
-        objective_fn=lambda pop: _objective_torch(pop, config, device),
-        bounds=bounds,
-        popsize=config.popsize,
-        maxiter=config.maxiter,
-        mutation=config.mutation,
-        recombination=config.recombination,
-        seed=config.seed,
-        device=device,
-    )
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        best_genes, best_fitness = differential_evolution_torch(
+            objective_fn=lambda pop: _objective_torch(pop, config, device, executor),
+            bounds=bounds,
+            popsize=config.popsize,
+            maxiter=config.maxiter,
+            mutation=config.mutation,
+            recombination=config.recombination,
+            seed=config.seed,
+            device=device,
+        )
     
     elapsed = time.time() - start_time
     # Note: fitness is Suppress - Target. So actual "score" (Target - Suppress) is -fitness.
