@@ -1,0 +1,25 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "latex-workshop.latex.autoBuild.run": "onSave",
+    "latex-workshop.latex.tools": [
+        {
+            "name": "latexmk",
+            "command": "/bin/zsh",
+            "args": [
+                "-lc",
+                "cd \"$1\" && /Library/TeX/texbin/latexmk -synctex=1 -interaction=nonstopmode -file-line-error -pdf \"$2.tex\"",
+                "latexmk-wrapper",
+                "%DIR%",
+                "%DOCFILE%"
+            ]
+        }
+    ],
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "latexmk",
+            "tools": [
+                "latexmk"
+            ]
+        }
+    ]
+}

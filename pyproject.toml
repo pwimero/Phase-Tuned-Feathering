@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phase-tuned-feathering"
+version = "0.1.0"
+description = "Research implementation for phase-tuned feathered wingtip geometry and PSD-safe acoustic-array models."
+requires-python = ">=3.11"
+readme = "README.md"
+authors = [
+    { name = "Phase Tuned Feathering" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+aero = ["aerosandbox"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

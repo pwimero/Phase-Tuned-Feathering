@@ -1,0 +1,1329 @@
+\documentclass[11pt]{article}
+
+% ------------------------------------------------------------
+% Packages
+% ------------------------------------------------------------
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{siunitx}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\setlist[itemize]{topsep=4pt,itemsep=2pt}
+\setlist[enumerate]{topsep=4pt,itemsep=2pt}
+
+% ------------------------------------------------------------
+% Title
+% ------------------------------------------------------------
+\title{
+    \textbf{Phase-Tuned Feathering for Targeted Aeroacoustic Directivity}\\
+    \large Revised Theoretical Model, Validation Roadmap, and Optimization Plan
+}
+
+\author{Prepared as a manuscript-development plan}
+\date{\today}
+
+% ------------------------------------------------------------
+% Custom commands
+% ------------------------------------------------------------
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\vect}[1]{\bm{#1}}
+\newcommand{\mat}[1]{\bm{#1}}
+\newcommand{\E}{\mathbb{E}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document presents a revised research plan for a phase-tuned feathering framework for targeted aeroacoustic directivity control. The central hypothesis is that a feathered trailing-edge assembly can be modeled as a broadband, partially coherent, distributed acoustic array whose far-field radiation pattern is shaped by feather incidence, source spacing, local geometry, propagation phase, and coherence-weighted interference. The revision narrows the paper's claim, replaces a potentially non-physical cosine-summed power spectral density formulation with a positive-semidefinite cross-spectral construction, introduces explicit arc-length Jacobians for nondimensional source coordinates, separates calibration from validation, and restructures the optimization plan to reduce the risk of overfitting unvalidated closure laws. The resulting framework should be presented as a calibrated semi-analytical stochastic model rather than an exact aeroacoustic law.
+\end{abstract}
+
+\tableofcontents
+
+\newpage
+
+% ------------------------------------------------------------
+\section{Revised Research Claim and Scope}
+
+\subsection{Central research claim}
+
+The proposed paper should not claim that feathered geometries are generally quieter, nor that incidence tuning alone can arbitrarily control broadband noise. A defensible thesis is:
+
+\begin{quote}
+\emph{
+Phase-tuned feathering can be modeled as a broadband, partially coherent acoustic-array problem in which feather incidence, spacing, sweep, taper, and out-of-plane curvature shape far-field directivity through a positive-semidefinite cross-spectral source model and coherence-weighted distributed loading-noise radiation.
+}
+\end{quote}
+
+The contribution is a predictive and calibratable modeling framework for shaping acoustic directivity, not a universal physical law for feather noise.
+
+\subsection{Recommended scope of the first paper}
+
+The first paper should be deliberately narrow. A suitable first-paper scope is:
+
+\begin{quote}
+\emph{
+A positive-semidefinite partially coherent array model for feathered trailing-edge directivity, calibrated and validated on simplified two-feather and limited multi-feather configurations.
+}
+\end{quote}
+
+A later paper can address full geometry optimization, high-dimensional evolutionary search, and detailed aero-structural feather physics.
+
+\subsection{Claims that should be avoided}
+
+The manuscript should avoid the following claims unless supported by independent validation:
+
+\begin{itemize}
+    \item that the optimized geometry is physically optimal;
+    \item that the model predicts absolute SPL without calibration;
+    \item that phase tuning remains effective when source coherence is negligible;
+    \item that XFOIL, AeroSandbox, or NeuralFoil validates aeroacoustic behavior;
+    \item that a cosine-reduced cross-term expression is automatically a valid PSD model.
+\end{itemize}
+
+\subsection{Claims that are defensible}
+
+The following claims are more defensible:
+
+\begin{itemize}
+    \item The feathered assembly can be represented as a distributed stochastic acoustic array under stated assumptions.
+    \item Incidence and geometry can alter directivity when source coherence is sufficiently retained.
+    \item The framework can be calibrated against baseline acoustic or CFD-derived cross-spectral data.
+    \item Optimization can identify designs that are optimal under the calibrated model, subject to aerodynamic and manufacturing constraints.
+    \item Independent CFD or experimental validation is required before making strong physical-performance claims.
+\end{itemize}
+
+% ------------------------------------------------------------
+\section{Physical Assumptions and Modeling Limits}
+
+The model should be explicitly described as a \textbf{closure-based semi-analytical framework}. Its governing structure is motivated by linear aeroacoustics and array theory, but its source spectrum, coherence law, transfer kernel, and incidence-phase terms require calibration.
+
+\begin{longtable}{p{0.22\linewidth} p{0.36\linewidth} p{0.34\linewidth}}
+\toprule
+\textbf{Category} & \textbf{Assumption} & \textbf{Risk if Violated} \\
+\midrule
+\endhead
+
+Acoustic regime
+&
+Linear, subsonic, far-field acoustics in a uniform ambient medium.
+&
+Invalid for nonlinear propagation, shocks, strong atmospheric gradients, or near-field measurements.
+\\
+
+Dominant source mechanism
+&
+Dominant sound is loading or trailing-edge scattering noise.
+&
+Model may miss tonal separation noise, blunt-edge noise, tip-vortex noise, gap noise, or structural vibration.
+\\
+
+Feather representation
+&
+Each feather is initially represented by one distributed source line.
+&
+Chordwise source distribution, porosity, compliance, and three-dimensional surface effects may be missed.
+\\
+
+Feather incidence
+&
+Each feather has one scalar incidence angle in the first model.
+&
+Spanwise twist, local deformation, and nonuniform incidence are excluded.
+\\
+
+Coherence
+&
+Second-order cross-spectral statistics adequately describe source correlation.
+&
+Intermittency, nonlinear source coupling, and higher-order turbulence statistics are neglected.
+\\
+
+Propagation
+&
+Free-space far-field Green's function is used.
+&
+Wind-tunnel reflections, ground effects, and near-field effects require a modified Green's function.
+\\
+
+Aerodynamic screening
+&
+Low-order aerodynamic tools are used only for feasibility constraints.
+&
+Two-dimensional polar tools cannot validate three-dimensional unsteady aeroacoustics.
+\\
+
+\bottomrule
+\end{longtable}
+
+\subsection{Scope statement for feather physics}
+
+Unless biological feather mechanics are explicitly modeled, the paper should state:
+
+\begin{quote}
+\emph{
+In this first formulation, feathers are treated as rigid prescribed-geometry acoustic source and scattering elements. Porosity, structural compliance, flutter, flow--structure interaction, and microstructural edge effects are excluded and reserved for later work.
+}
+\end{quote}
+
+% ------------------------------------------------------------
+\section{Coordinate System and Geometry Parameterization}
+
+A formal coordinate convention is required before the model is introduced. The current plan should include a schematic defining global and local feather coordinates.
+
+\subsection{Global coordinates}
+
+Let the global coordinate system be:
+
+\begin{itemize}
+    \item $x$: streamwise direction;
+    \item $y$: spanwise or lateral direction;
+    \item $z$: vertical or wing-normal direction.
+\end{itemize}
+
+The observer direction is
+
+\begin{equation}
+    \vect{n} =
+    \begin{bmatrix}
+    n_x & n_y & n_z
+    \end{bmatrix}^{T},
+    \qquad
+    \|\vect{n}\|=1.
+\end{equation}
+
+\subsection{Source-line geometry}
+
+For feather $i$, let the source-line coordinate be $\eta \in [0,1]$. The source position is
+
+\begin{equation}
+    \vect{r}_i(\eta;\vect{\mu})
+    =
+    \begin{bmatrix}
+    x_i(\eta) \\
+    y_i(\eta) \\
+    z_i(\eta)
+    \end{bmatrix}.
+\end{equation}
+
+A preliminary parameterization is
+
+\begin{align}
+    x_i(\eta) &= x_i^0 + L_{x,i} \eta, \\
+    y_i(\eta) &= y_i^0 + S_i \eta^{p_{s,i}}, \\
+    z_i(\eta) &= z_i^0 + V_i \eta^{p_{v,i}},
+\end{align}
+
+where:
+
+\begin{itemize}
+    \item $L_{x,i}$ is the streamwise source-line length or projection;
+    \item $S_i$ is the lateral sweep amplitude;
+    \item $V_i$ is the vertical curvature amplitude;
+    \item $p_{s,i}$ and $p_{v,i}$ control nonlinear sweep and curvature.
+\end{itemize}
+
+The local chord distribution is
+
+\begin{equation}
+    c_i(\eta)
+    =
+    c_i^0
+    \left[
+        1 -
+        \left(1-\tau_{t,i}\right)\eta^{m_i}
+    \right],
+\end{equation}
+
+where $c_i^0$ is the root or reference chord, $\tau_{t,i}$ is the taper ratio, and $m_i$ is the taper exponent.
+
+\subsection{Arc-length Jacobian}
+
+If $\eta$ is nondimensional and source quantities are defined per unit physical length, the double integral must include arc-length Jacobians:
+
+\begin{equation}
+    J_i(\eta)
+    =
+    \left\|
+    \frac{\partial \vect{r}_i}{\partial \eta}
+    \right\|.
+\end{equation}
+
+Thus,
+
+\begin{equation}
+    \dd s_i = J_i(\eta)\dd \eta.
+\end{equation}
+
+This convention prevents geometry changes from artificially changing source strength through the choice of nondimensional coordinate.
+
+% ------------------------------------------------------------
+\section{Model Hierarchy}
+
+The paper should present a model hierarchy rather than introducing the most complex model immediately.
+
+\subsection{Level 1: compact coherent array}
+
+The simplest model treats each feather as a compact acoustic element with complex amplitude $q_i(\omega)$:
+
+\begin{equation}
+    p(\vect{n},\omega)
+    =
+    \frac{1}{4\pi R}
+    \sum_{i=1}^{N}
+    A_i(\vect{n},\omega)
+    q_i(\omega)
+    \exp\left[
+        \ii k \vect{n}\cdot \vect{r}_i
+    \right],
+\end{equation}
+
+where $k=\omega/c_0$ and $A_i$ is a transfer factor. This limit is useful for checking array behavior and directivity-lobe formation.
+
+\subsection{Level 2: deterministic distributed source model}
+
+A deterministic distributed model represents each feather as a source line:
+
+\begin{equation}
+    p(\vect{n},\omega)
+    =
+    \frac{1}{4\pi R}
+    \sum_{i=1}^{N}
+    \int_{0}^{1}
+    H_i(\eta,\vect{n},\omega)
+    q_i(\eta,\omega)
+    \exp\left[
+        \ii k \vect{n}\cdot \vect{r}_i(\eta)
+    \right]
+    J_i(\eta)\dd\eta.
+\end{equation}
+
+Level 2 is useful for testing deterministic phase effects, compact-source limits, and quadrature convergence.
+
+\subsection{Level 3: stochastic cross-spectral model}
+
+For broadband turbulent aeroacoustic noise, the source should be treated stochastically. The Level 3 model predicts the pressure power spectral density using source cross-spectra.
+
+The continuous source cross-spectrum is
+
+\begin{equation}
+    \Phi_{qq}^{ij}(\eta,\eta',\omega)
+    =
+    \E
+    \left[
+        q_i(\eta,\omega)
+        q_j^{*}(\eta',\omega)
+    \right].
+\end{equation}
+
+The far-field pressure PSD is
+
+\begin{align}
+    S_{pp}(\vect{n},\omega)
+    &=
+    \frac{1}{(4\pi R)^2}
+    \sum_{i=1}^{N}
+    \sum_{j=1}^{N}
+    \int_{0}^{1}
+    \int_{0}^{1}
+    H_i(\eta,\vect{n},\omega)
+    H_j^{*}(\eta',\vect{n},\omega)
+    \Phi_{qq}^{ij}(\eta,\eta',\omega)
+    \nonumber \\
+    &\qquad\qquad \times
+    \exp
+    \left[
+        \ii k \vect{n}\cdot
+        \left(
+            \vect{r}_i(\eta)-\vect{r}_j(\eta')
+        \right)
+    \right]
+    J_i(\eta)J_j(\eta')
+    \dd\eta \dd\eta'.
+\end{align}
+
+This is the preferred primary form of the model.
+
+% ------------------------------------------------------------
+\section{Positive-Semidefinite Cross-Spectral Construction}
+
+\subsection{Why a PSD-safe construction is required}
+
+A pressure power spectral density must satisfy
+
+\begin{equation}
+    S_{pp}(\vect{n},\omega) \geq 0
+    \qquad
+    \text{for all } \vect{n}, \omega.
+\end{equation}
+
+A model written only as a sum of cosine-weighted cross terms can become negative if the cross-spectrum closure is inconsistent. Therefore, the source cross-spectrum must be constructed so that it is Hermitian and positive semidefinite.
+
+\subsection{Discretized quadratic form}
+
+After discretizing all source-line coordinates into $M$ total source points, define the vector of transfer-propagation weights:
+
+\begin{equation}
+    \vect{a}(\vect{n},\omega)
+    =
+    \begin{bmatrix}
+    a_1 & a_2 & \cdots & a_M
+    \end{bmatrix}^{T},
+\end{equation}
+
+where each source-point entry includes the transfer function, propagation phase, and quadrature weight.
+
+Let $\mat{C}_q(\omega)$ be the source cross-spectral matrix:
+
+\begin{equation}
+    \mat{C}_q(\omega)
+    =
+    \E
+    \left[
+        \vect{q}(\omega)\vect{q}^{H}(\omega)
+    \right].
+\end{equation}
+
+The pressure PSD is then
+
+\begin{equation}
+    S_{pp}(\vect{n},\omega)
+    =
+    \frac{1}{(4\pi R)^2}
+    \vect{a}^{H}(\vect{n},\omega)
+    \mat{C}_q(\omega)
+    \vect{a}(\vect{n},\omega).
+\end{equation}
+
+If
+
+\begin{equation}
+    \mat{C}_q(\omega)=\mat{C}_q^{H}(\omega),
+    \qquad
+    \mat{C}_q(\omega)\succeq 0,
+\end{equation}
+
+then
+
+\begin{equation}
+    S_{pp}(\vect{n},\omega)\geq 0.
+\end{equation}
+
+\subsection{Valid coherence construction}
+
+A practical source cross-spectrum can be written as
+
+\begin{equation}
+    C_{q,mn}(\omega)
+    =
+    \sqrt{\Phi_m(\omega)\Phi_n(\omega)}
+    \,
+    \Gamma_{mn}(\omega),
+\end{equation}
+
+where $\Phi_m$ and $\Phi_n$ are autospectra and $\Gamma_{mn}$ is the complex coherence between source points $m$ and $n$.
+
+The coherence matrix must satisfy
+
+\begin{equation}
+    \Gamma_{mm}=1,
+    \qquad
+    \Gamma_{mn}=\Gamma_{nm}^{*},
+    \qquad
+    \mat{\Gamma}(\omega)\succeq 0.
+\end{equation}
+
+A convenient but nontrivial requirement is that the chosen coherence kernel must generate a positive-semidefinite matrix for every source-point set used in the model.
+
+% ------------------------------------------------------------
+\section{Closure Models}
+
+The closure models should be presented as calibrated constitutive assumptions, not as exact physical laws.
+
+\subsection{Mach number and reduced frequency}
+
+Define
+
+\begin{equation}
+    M_{\infty}=\frac{U_{\infty}}{c_0},
+\end{equation}
+
+and a local reduced-frequency or Strouhal-type variable
+
+\begin{equation}
+    \chi_i(\eta,\omega)
+    =
+    \frac{\omega c_i(\eta)}{U_c},
+\end{equation}
+
+where $U_c$ is an effective convection velocity. A common first approximation is
+
+\begin{equation}
+    U_c = \beta U_{\infty},
+    \qquad
+    \beta \approx 0.6\text{--}0.8,
+\end{equation}
+
+but $\beta$ should be calibrated or included in the uncertainty model.
+
+\subsection{Transfer kernel}
+
+The preliminary transfer kernel should be written in vector form:
+
+\begin{equation}
+    H_i(\eta,\vect{n},\omega)
+    =
+    K_H(\omega,M_{\infty},\vect{n})
+    c_i(\eta)
+    \left[
+        \vect{d}_i(\eta,\alpha_i)\cdot \vect{n}
+    \right],
+\end{equation}
+
+where $\vect{d}_i$ is the local loading or dipole direction derived from feather orientation.
+
+A possible first approximation is
+
+\begin{equation}
+    K_H(\omega,M_{\infty},\vect{n})
+    =
+    \frac{\omega^2}{c_0^2}
+    \frac{1}{(1-M_{\infty}n_x)^2}.
+\end{equation}
+
+The paper must state whether this is intended as a Curle-type compact loading approximation, a trailing-edge scattering surrogate, or an empirical transfer kernel.
+
+\subsection{Source autospectrum}
+
+A preliminary autospectrum closure may be written as
+
+\begin{equation}
+    \Phi_i(\eta,\omega)
+    =
+    C_q
+    \rho_0^2
+    U_{\infty}^{5}
+    c_i^2(\eta)
+    F_{\chi}\!\left(\chi_i\right)
+    F_{\alpha}\!\left(\alpha_i\right)
+    F_{\mathrm{BL}}\!\left(Re_i,\delta_i,\Pi_i\right),
+\end{equation}
+
+where:
+
+\begin{itemize}
+    \item $C_q$ is an absolute source-level calibration constant;
+    \item $F_{\chi}$ is the frequency-shape closure;
+    \item $F_{\alpha}$ is the incidence-amplitude closure;
+    \item $F_{\mathrm{BL}}$ represents boundary-layer-state effects;
+    \item $Re_i$, $\delta_i$, and $\Pi_i$ denote Reynolds number, boundary-layer thickness, and pressure-gradient or loading-state descriptors.
+\end{itemize}
+
+For the first model, one may use
+
+\begin{equation}
+    F_{\chi}(\chi)
+    =
+    \frac{\chi^2}{(1+\chi^2)^{7/3}},
+\end{equation}
+
+but this shape must be justified, calibrated, or treated as a sensitivity parameter.
+
+The original symmetric incidence-amplitude closure,
+
+\begin{equation}
+    F_{\alpha}(\alpha_i)
+    =
+    1+a_{\alpha}(\alpha_i-\alpha_{\mathrm{ref}})^2,
+\end{equation}
+
+should be treated as a low-order approximation. If data show asymmetry between positive and negative incidence, replace it with a fitted asymmetric function.
+
+\subsection{Coherence magnitude}
+
+A first coherence magnitude closure is
+
+\begin{equation}
+    |\Gamma_{mn}(\omega)|
+    =
+    \exp
+    \left[
+        -
+        \frac{\omega}{U_c}
+        \left(
+            \frac{|\Delta x_{mn}|}{a_x}
+            +
+            \frac{|\Delta y_{mn}|}{a_y}
+            +
+            \frac{|\Delta z_{mn}|}{a_z}
+        \right)
+    \right],
+\end{equation}
+
+where $a_x$, $a_y$, and $a_z$ are coherence decay constants.
+
+However, the resulting coherence matrix must be checked or constructed so that
+
+\begin{equation}
+    \mat{\Gamma}(\omega)\succeq 0.
+\end{equation}
+
+If a proposed kernel fails this condition, use a PSD projection, a known positive-definite kernel, or a low-rank coherence model.
+
+\subsection{Frequency-dependent incidence phase}
+
+The incidence-phase closure should be frequency-dependent. Instead of using only a constant phase coefficient, write
+
+\begin{equation}
+    \phi_{\alpha,i}(\omega)
+    =
+    \omega \tau_{\alpha}(\alpha_i),
+\end{equation}
+
+where $\tau_{\alpha}$ is an incidence-dependent effective source delay.
+
+A first linear delay model is
+
+\begin{equation}
+    \tau_{\alpha}(\alpha_i)
+    =
+    b_{\alpha}(\alpha_i-\alpha_{\mathrm{ref}}).
+\end{equation}
+
+Then the incidence phase difference between two source points is
+
+\begin{equation}
+    \Delta \phi_{\alpha,ij}
+    =
+    \omega
+    \left[
+        \tau_{\alpha}(\alpha_i)
+        -
+        \tau_{\alpha}(\alpha_j)
+    \right].
+\end{equation}
+
+This is more physically interpretable than a frequency-independent phase offset because it corresponds to an effective time delay or source-position shift.
+
+% ------------------------------------------------------------
+\section{Band SPL, Directivity, and Objective Metrics}
+
+\subsection{Band-integrated SPL}
+
+The band-integrated sound pressure level is
+
+\begin{equation}
+    \mathrm{SPL}_{\mathrm{band}}(\vect{n})
+    =
+    10\log_{10}
+    \left[
+        \frac{1}{p_{\mathrm{ref}}^2}
+        \int_{\omega_1}^{\omega_2}
+        S_{pp}(\vect{n},\omega)
+        \dd\omega
+    \right].
+\end{equation}
+
+\subsection{Normalized directivity}
+
+The normalized directivity is
+
+\begin{equation}
+    D(\vect{n},\omega)
+    =
+    \frac{
+        S_{pp}(\vect{n},\omega)
+    }{
+        \frac{1}{4\pi}
+        \int_{4\pi}
+        S_{pp}(\vect{n}',\omega)
+        \dd\Omega'
+    }.
+\end{equation}
+
+This metric describes redistribution of acoustic radiation, but it does not by itself prove noise reduction.
+
+\subsection{Absolute acoustic metrics}
+
+The optimization and results should also report absolute metrics:
+
+\begin{align}
+    \mathrm{SPL}_{T}
+    &=
+    10\log_{10}
+    \left[
+        \frac{1}{p_{\mathrm{ref}}^2}
+        \int_{\omega_1}^{\omega_2}
+        \int_{T}
+        w_T(\vect{n})
+        S_{pp}(\vect{n},\omega)
+        \dd\Omega
+        \dd\omega
+    \right],
+    \\
+    \mathrm{SPL}_{S}
+    &=
+    10\log_{10}
+    \left[
+        \frac{1}{p_{\mathrm{ref}}^2}
+        \int_{\omega_1}^{\omega_2}
+        \int_{S}
+        w_S(\vect{n})
+        S_{pp}(\vect{n},\omega)
+        \dd\Omega
+        \dd\omega
+    \right],
+\end{align}
+
+where $T$ is the target sector and $S$ is the suppressed sector.
+
+A total radiated acoustic proxy may be defined as
+
+\begin{equation}
+    P_{\mathrm{ac}}
+    =
+    \int_{\omega_1}^{\omega_2}
+    \int_{4\pi}
+    S_{pp}(\vect{n},\omega)
+    \dd\Omega
+    \dd\omega.
+\end{equation}
+
+\subsection{Recommended objective structure}
+
+Avoid optimizing only normalized directivity. A constrained multi-objective formulation is preferred:
+
+\begin{align}
+    \text{maximize} \quad
+    & J_{\mathrm{dir}}(\vect{\mu}),
+    \\
+    \text{minimize} \quad
+    & \mathrm{SPL}_{S}(\vect{\mu}),
+    \quad
+    C_D(\vect{\mu}),
+    \quad
+    P_{\mathrm{ac}}(\vect{\mu}),
+    \quad
+    U_{\mathrm{model}}(\vect{\mu}),
+    \\
+    \text{subject to} \quad
+    & C_L(\vect{\mu}) \geq C_{L,\min},
+    \\
+    & C_D(\vect{\mu}) \leq C_{D,\max},
+    \\
+    & \alpha_{\min} \leq \alpha_i \leq \alpha_{\max},
+    \\
+    & g_{ij}(\vect{\mu}) \geq g_{\min},
+    \\
+    & \text{no stall, manufacturing, and geometric-intersection constraints.}
+\end{align}
+
+Here $U_{\mathrm{model}}$ is an uncertainty penalty derived from closure-parameter uncertainty.
+
+% ------------------------------------------------------------
+\section{Calibration Strategy}
+
+The empirical or semi-empirical closure parameters must be identified explicitly. They should not be hidden inside the optimization.
+
+\begin{longtable}{p{0.18\linewidth} p{0.36\linewidth} p{0.36\linewidth}}
+\toprule
+\textbf{Parameter} & \textbf{Meaning} & \textbf{Recommended Identification Method} \\
+\midrule
+\endhead
+
+$C_q$
+&
+Absolute source-level scale.
+&
+Fit to baseline far-field SPL or near-edge pressure spectrum.
+\\
+
+$U_c$ or $\beta$
+&
+Effective convection velocity.
+&
+Fit from phase speed of surface-pressure fluctuations or use literature-informed bounds.
+\\
+
+$a_x,a_y,a_z$
+&
+Coherence decay scales.
+&
+Fit from CFD surface-pressure cross-spectra or microphone coherence data.
+\\
+
+$a_{\alpha}$
+&
+Incidence-to-source-level sensitivity.
+&
+Single-feather incidence sweep.
+\\
+
+$\tau_{\alpha}(\alpha)$ or $b_{\alpha}$
+&
+Incidence-dependent phase delay.
+&
+Two-feather phase-sweep experiment or time-resolved CFD.
+\\
+
+$\alpha_{\mathrm{ref}}$
+&
+Reference incidence for amplitude and phase closures.
+&
+Set from baseline geometry or fit as a calibration parameter.
+\\
+
+\bottomrule
+\end{longtable}
+
+\subsection{Calibration--validation split}
+
+Calibration and validation must be separated.
+
+\begin{itemize}
+    \item Calibration cases are used to fit closure parameters.
+    \item Validation cases are held out and used only after parameters are fixed.
+    \item At least one geometry, incidence condition, or frequency band should be reserved for independent validation.
+\end{itemize}
+
+The final paper should state explicitly which data were used for calibration and which were used for validation.
+
+% ------------------------------------------------------------
+\section{Validation Ladder}
+
+Validation should proceed in stages. The project should not jump directly to a full optimized feathered geometry.
+
+\begin{longtable}{p{0.12\linewidth} p{0.32\linewidth} p{0.44\linewidth}}
+\toprule
+\textbf{Stage} & \textbf{Question} & \textbf{Evidence Output} \\
+\midrule
+\endhead
+
+0
+&
+Do the equations reduce correctly in trivial limits?
+&
+Unit tests for $N=1$, identical feathers, zero coherence, full coherence, and low-frequency limits.
+\\
+
+1
+&
+Are numerical integrations stable?
+&
+Convergence plots for $\eta$, $\eta'$, observer grid, and frequency-grid refinement.
+\\
+
+2
+&
+Does Level 3 recover Level 2 and Level 1?
+&
+Overlay plots for deterministic, compact-source, and fully coherent limits.
+\\
+
+3
+&
+Is the PSD construction valid?
+&
+Eigenvalue checks showing $\mat{C}_q\succeq0$ and $S_{pp}\geq0$ over all tested observer angles and frequencies.
+\\
+
+4
+&
+Does the source spectrum reproduce a baseline?
+&
+Baseline spectrum fit with confidence intervals for $C_q$ and spectral-shape parameters.
+\\
+
+5
+&
+Does the coherence closure match data?
+&
+Coherence-versus-separation plots from CFD or measurement.
+\\
+
+6
+&
+Does incidence phase tuning exist?
+&
+Two-feather incidence sweep showing phase delay and directivity shift.
+\\
+
+7
+&
+Does the full model predict held-out cases?
+&
+Comparison against CFD, microphone-array data, or independent literature data.
+\\
+
+8
+&
+Are conclusions robust?
+&
+Monte Carlo or Bayesian uncertainty intervals and ablation studies.
+\\
+
+\bottomrule
+\end{longtable}
+
+\subsection{Minimum credible validation package}
+
+A minimum credible paper should include:
+
+\begin{itemize}
+    \item one baseline geometry;
+    \item one two-feather incidence phase-sweep;
+    \item one limited multi-feather configuration;
+    \item at least two frequency bands;
+    \item at least one held-out validation condition;
+    \item uncertainty bands on model predictions.
+\end{itemize}
+
+% ------------------------------------------------------------
+\section{Aerodynamic Feasibility and CFD Role}
+
+\subsection{Role of low-order aerodynamic tools}
+
+XFOIL, AeroSandbox, and NeuralFoil may be used for rapid feasibility screening, but they should not be presented as aeroacoustic validation tools.
+
+\begin{longtable}{p{0.2\linewidth} p{0.36\linewidth} p{0.34\linewidth}}
+\toprule
+\textbf{Tool} & \textbf{Best Use} & \textbf{Limitation} \\
+\midrule
+\endhead
+
+XFOIL
+&
+Fast two-dimensional airfoil polar estimates.
+&
+Not reliable for strong three-dimensional feather interaction, separated wakes, or acoustic prediction.
+\\
+
+AeroSandbox
+&
+Python-based geometry handling, optimization, and aerodynamic wrappers.
+&
+Not a substitute for unsteady aeroacoustic validation.
+\\
+
+NeuralFoil or ML surrogate
+&
+Fast polar approximation and active-learning acceleration.
+&
+Must be benchmarked against XFOIL or CFD in the relevant Reynolds-number and incidence range.
+\\
+
+OpenFOAM or equivalent CFD
+&
+High-fidelity aerodynamic and aeroacoustic validation for selected cases.
+&
+Requires mesh, time-step, turbulence-model, and acoustic-post-processing verification.
+\\
+
+pymoo or DEAP
+&
+Evolutionary and multi-objective optimization.
+&
+Requires random-seed repeatability, budget reporting, and constraint-handling documentation.
+\\
+
+\bottomrule
+\end{longtable}
+
+\subsection{CFD validation path}
+
+For aeroacoustic validation, CFD should be time-resolved. A credible CFD path is:
+
+\begin{enumerate}
+    \item Run unsteady CFD for baseline and selected feathered geometries.
+    \item Extract near-edge pressure or loading time histories.
+    \item Compute autospectra and cross-spectra.
+    \item Fit closure parameters using calibration cases only.
+    \item Predict held-out cases using fixed parameters.
+    \item Compare directivity lobes, suppressed-sector SPL, and band-integrated spectra.
+\end{enumerate}
+
+If FW-H or another acoustic analogy is used, the paper must specify the acoustic surface, sampling rate, windowing, observer locations, and convergence checks.
+
+% ------------------------------------------------------------
+\section{Optimization Architecture}
+
+\subsection{Software structure}
+
+The code should be organized as a research package rather than a single script:
+
+\begin{itemize}
+    \item \texttt{geometry}: source-line and surface parameterization;
+    \item \texttt{aero}: aerodynamic screening and constraints;
+    \item \texttt{acoustics}: Level 1, Level 2, and Level 3 models;
+    \item \texttt{closures}: source, coherence, phase, and transfer-kernel closures;
+    \item \texttt{calibration}: parameter fitting and uncertainty estimation;
+    \item \texttt{objectives}: directivity, SPL, drag, and uncertainty metrics;
+    \item \texttt{optimization}: GA, NSGA-II/III, surrogate-assisted search;
+    \item \texttt{validation}: convergence, held-out comparisons, and plots;
+    \item \texttt{tests}: unit tests and regression tests.
+\end{itemize}
+
+\subsection{Recommended workflow}
+
+\begin{enumerate}
+    \item Define geometry and design vector $\vect{\mu}$.
+    \item Screen aerodynamic feasibility.
+    \item Evaluate the PSD-safe acoustic model.
+    \item Propagate closure-parameter uncertainty.
+    \item Compute objective and constraint values.
+    \item Run constrained multi-objective optimization.
+    \item Select Pareto designs using a physically justified decision rule.
+    \item Re-test selected designs using independent CFD or experiment.
+\end{enumerate}
+
+\subsection{Staged optimization plan}
+
+The optimization variables should be introduced gradually.
+
+\begin{longtable}{p{0.16\linewidth} p{0.34\linewidth} p{0.38\linewidth}}
+\toprule
+\textbf{Stage} & \textbf{Variables} & \textbf{Purpose} \\
+\midrule
+\endhead
+
+1
+&
+$\alpha_i$ only
+&
+Test whether incidence phase tuning is meaningful.
+\\
+
+2
+&
+$\alpha_i$, $y_i^0$
+&
+Test spacing and lateral directivity control.
+\\
+
+3
+&
+$\alpha_i$, $y_i^0$, $z_i^0$, limited sweep
+&
+Test three-dimensional placement effects.
+\\
+
+4
+&
+Add curvature and taper
+&
+Search broader geometry space.
+\\
+
+5
+&
+Add closure uncertainty
+&
+Perform robust optimization and identify designs that survive parameter variation.
+\\
+
+\bottomrule
+\end{longtable}
+
+\subsection{Regularization}
+
+To prevent the optimizer from exploiting unrealistic high-frequency geometry or incidence variation, include regularization terms such as
+
+\begin{equation}
+    R_{\alpha}
+    =
+    \sum_{i=1}^{N-1}
+    \left(
+        \alpha_{i+1}-\alpha_i
+    \right)^2,
+\end{equation}
+
+and, where needed,
+
+\begin{equation}
+    R_{\mathrm{geom}}
+    =
+    \sum_{i=1}^{N-1}
+    \left\|
+        \vect{r}_{i+1}(0)-\vect{r}_{i}(0)
+    \right\|^{-2},
+\end{equation}
+
+or another penalty that discourages physically implausible clustering, overlap, or abrupt incidence jumps.
+
+% ------------------------------------------------------------
+\section{Uncertainty and Robustness}
+
+Closure uncertainty should be propagated into the final results. Let the uncertain closure vector be
+
+\begin{equation}
+    \vect{\theta}
+    =
+    \left[
+        C_q,
+        U_c,
+        a_x,
+        a_y,
+        a_z,
+        a_{\alpha},
+        b_{\alpha}
+    \right]^T.
+\end{equation}
+
+Predictions should be reported as distributions:
+
+\begin{equation}
+    S_{pp}(\vect{n},\omega;\vect{\mu},\vect{\theta}),
+    \qquad
+    \vect{\theta}\sim p(\vect{\theta}).
+\end{equation}
+
+A robust design objective may use expected performance and variance penalty:
+
+\begin{equation}
+    J_{\mathrm{robust}}(\vect{\mu})
+    =
+    \E_{\vect{\theta}}
+    \left[
+        J_{\mathrm{dir}}(\vect{\mu},\vect{\theta})
+    \right]
+    -
+    \lambda_{\theta}
+    \mathrm{Var}_{\vect{\theta}}
+    \left[
+        J_{\mathrm{dir}}(\vect{\mu},\vect{\theta})
+    \right].
+\end{equation}
+
+The results should include:
+
+\begin{itemize}
+    \item uncertainty bands on directivity maps;
+    \item sensitivity rankings for closure parameters;
+    \item ablation studies removing incidence phase, coherence, sweep, taper, and curvature effects;
+    \item random-seed repeatability for optimization.
+\end{itemize}
+
+% ------------------------------------------------------------
+\section{Dimensional and Numerical Audits}
+
+\subsection{Dimensional audit}
+
+Before submission, include a table proving the units of:
+
+\begin{itemize}
+    \item $H_i$;
+    \item $\Phi_{qq}^{ij}$;
+    \item $J_iJ_j\dd\eta\dd\eta'$;
+    \item $S_{pp}$;
+    \item $\mathrm{SPL}_{\mathrm{band}}$.
+\end{itemize}
+
+This is essential because the source density convention determines whether the arc-length Jacobian is required.
+
+\subsection{Numerical checks}
+
+The implementation should report:
+
+\begin{itemize}
+    \item quadrature convergence over $\eta$ and $\eta'$;
+    \item frequency-grid convergence over $\omega$;
+    \item observer-grid convergence over $\vect{n}$;
+    \item eigenvalue checks for $\mat{C}_q$;
+    \item repeatability over optimizer random seeds;
+    \item comparison of vectorized and reference-loop implementations.
+\end{itemize}
+
+% ------------------------------------------------------------
+\section{Recommended Manuscript Structure}
+
+A strong paper structure is:
+
+\begin{enumerate}
+    \item \textbf{Introduction}\\
+    Motivation, gap in targeted directivity control, and distinction from generic noise reduction.
+
+    \item \textbf{Physical Scope and Assumptions}\\
+    Linear acoustics, source mechanism, rigid-feather assumption, and model limits.
+
+    \item \textbf{Geometry Parameterization}\\
+    Coordinate system, feather source-line geometry, incidence convention, chord and taper definitions.
+
+    \item \textbf{Model Hierarchy}\\
+    Level 1 compact array, Level 2 deterministic distributed model, and Level 3 stochastic cross-spectral model.
+
+    \item \textbf{Positive-Semidefinite Cross-Spectral Formulation}\\
+    Matrix PSD construction, Hermitian coherence, and proof that $S_{pp}\geq0$.
+
+    \item \textbf{Closure Models}\\
+    Transfer kernel, source autospectrum, coherence, incidence-amplitude law, and incidence-delay law.
+
+    \item \textbf{Calibration and Uncertainty}\\
+    Identification of closure parameters, calibration data, uncertainty model, and validation split.
+
+    \item \textbf{Numerical Implementation}\\
+    Quadrature, frequency integration, observer grids, vectorization, software tests, and reproducibility.
+
+    \item \textbf{Validation}\\
+    Analytical limits, convergence, two-feather phase sweep, coherence calibration, and held-out validation.
+
+    \item \textbf{Optimization Framework}\\
+    Multi-objective formulation, aerodynamic constraints, regularization, Pareto fronts, and robust design.
+
+    \item \textbf{Results}\\
+    Directivity maps, SPL metrics, Pareto fronts, ablations, and uncertainty intervals.
+
+    \item \textbf{Discussion}\\
+    Interpretation of phase tuning, coherence limits, aerodynamic tradeoffs, and model limitations.
+
+    \item \textbf{Conclusion}\\
+    Validated contribution, design implications, and future extensions.
+\end{enumerate}
+
+% ------------------------------------------------------------
+\section{Revised Implementation Milestones}
+
+\begin{enumerate}
+    \item \textbf{Mathematical core}\\
+    Implement $\vect{r}_i(\eta)$, $c_i(\eta)$, $J_i(\eta)$, $H_i$, $\Phi_i$, $\Gamma_{ij}$, $\mat{C}_q$, $S_{pp}$, directivity, and band SPL.
+
+    \item \textbf{PSD-safe formulation}\\
+    Build the discretized cross-spectral matrix and verify Hermitian positive-semidefinite behavior.
+
+    \item \textbf{Analytical limits}\\
+    Test $N=1$, identical feathers, zero coherence, full coherence, compact-source limit, and low-frequency behavior.
+
+    \item \textbf{Numerical convergence}\\
+    Produce convergence plots for source-line quadrature, frequency integration, and observer discretization.
+
+    \item \textbf{Simple incidence study}\\
+    Simulate or measure a two-feather incidence sweep to estimate incidence-dependent phase delay.
+
+    \item \textbf{Aerodynamic screening}\\
+    Use XFOIL, AeroSandbox, or NeuralFoil only for preliminary aerodynamic feasibility and constraint filtering.
+
+    \item \textbf{Closure calibration}\\
+    Fit $C_q$, $U_c$, coherence lengths, incidence-amplitude terms, and incidence-delay terms using calibration cases.
+
+    \item \textbf{Held-out validation}\\
+    Compare model predictions against independent CFD, experiment, or literature data not used for calibration.
+
+    \item \textbf{Staged optimization}\\
+    Begin with $\alpha_i$ only, then add spacing, then limited three-dimensional geometry, then robust multi-objective optimization.
+
+    \item \textbf{Paper package}\\
+    Archive code, input files, calibration data, validation data, random seeds, environment files, and plotting scripts.
+\end{enumerate}
+
+% ------------------------------------------------------------
+\section{Critical Reviewer Questions and Planned Responses}
+
+\begin{longtable}{p{0.36\linewidth} p{0.54\linewidth}}
+\toprule
+\textbf{Likely Reviewer Question} & \textbf{Planned Response} \\
+\midrule
+\endhead
+
+How do you guarantee that the predicted PSD is non-negative?
+&
+Use a Hermitian positive-semidefinite source cross-spectral matrix and compute $S_{pp}$ as a quadratic form.
+\\
+
+Does phase tuning matter for broadband noise?
+&
+Only when coherence is non-negligible. The paper will explicitly show coherence-limited frequency bands.
+\\
+
+Are the source and coherence closures derived from first principles?
+&
+No. They are calibrated constitutive closures embedded in a first-principles-inspired acoustic framework.
+\\
+
+How do you avoid optimizing model error?
+&
+Use staged optimization, regularization, closure uncertainty, ablations, and independent validation.
+\\
+
+Why use XFOIL or AeroSandbox?
+&
+Only for aerodynamic screening and feasibility constraints, not for acoustic validation.
+\\
+
+Does directivity improvement mean noise reduction?
+&
+Not necessarily. The paper reports normalized directivity, absolute suppressed-sector SPL, target-sector SPL, and total acoustic-power proxy.
+\\
+
+Are biological feather effects included?
+&
+Not in the first model. Feathers are treated as rigid prescribed-geometry elements; porosity and compliance are future extensions.
+\\
+
+\bottomrule
+\end{longtable}
+
+% ------------------------------------------------------------
+\section{Conclusion}
+
+The revised plan frames phase-tuned feathering as a calibrated stochastic acoustic-array framework rather than an exact physical law. The most important corrections are the positive-semidefinite cross-spectral construction, explicit arc-length Jacobians, frequency-dependent incidence-delay closure, calibration--validation separation, staged optimization, and uncertainty propagation. With these changes, the framework becomes more defensible for a research manuscript because it separates mathematical structure from empirical closure assumptions and prevents the optimizer from exploiting physically unvalidated model features.
+
+% ------------------------------------------------------------
+\begin{thebibliography}{99}
+
+\bibitem{Curle1955}
+N. Curle,
+``The influence of solid boundaries upon aerodynamic sound,''
+\emph{Proceedings of the Royal Society A},
+vol. 231, pp. 505--514, 1955.
+
+\bibitem{Farassat2007}
+F. Farassat,
+``Derivation of Formulations 1 and 1A of Farassat,''
+NASA Technical Report, NTRS 20070010579, 2007.
+
+\bibitem{Howe1978}
+M. S. Howe,
+``A review of the theory of trailing edge noise,''
+NASA Technical Report, NTRS 19780018938, 1978.
+
+\bibitem{DrelaXFOIL}
+M. Drela,
+\emph{XFOIL: Subsonic Airfoil Development System},
+MIT documentation.
+
+\bibitem{AeroSandbox}
+P. Sharpe,
+\emph{AeroSandbox: Aircraft Design Optimization in Python},
+software documentation.
+
+\bibitem{NeuralFoil}
+P. Sharpe and R. J. Hansman,
+``NeuralFoil: An Airfoil Aerodynamics Analysis Tool Using Physics-Informed Machine Learning,'' 2025.
+
+\bibitem{pymoo}
+J. Blank and K. Deb,
+``pymoo: Multi-objective Optimization in Python,''
+software documentation and associated publication.
+
+\bibitem{DEAP}
+F.-A. Fortin, F.-M. De Rainville, M.-A. Gardner, M. Parizeau, and C. Gagné,
+``DEAP: Evolutionary Algorithms Made Easy,''
+\emph{Journal of Machine Learning Research}, 2012.
+
+\end{thebibliography}
+
+\end{document}
