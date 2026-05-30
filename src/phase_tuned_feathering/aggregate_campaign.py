@@ -242,7 +242,7 @@ def _write_freedom_summary_csv(campaign_dir: Path, summary: list[dict]) -> Path:
     return path
 
 
-def _freedom_fit_chart_svg(summary: list[dict], width: int = 1120, height: int = 560) -> str:
+def _freedom_fit_chart_svg(summary: list[dict], width: int = 1512, height: int = 756) -> str:
     rows = [
         row for row in summary
         if row["mean_validated_surrogate_target_rmse_db"] is not None
@@ -250,46 +250,45 @@ def _freedom_fit_chart_svg(summary: list[dict], width: int = 1120, height: int =
     if len(rows) < 2:
         return ""
 
-    margin_left = 95
-    margin_right = 40
-    margin_top = 82
-    margin_bottom = 120
+    margin_left = 340
+    margin_right = 96
+    margin_top = 116
+    margin_bottom = 88
     plot_w = width - margin_left - margin_right
     plot_h = height - margin_top - margin_bottom
     max_rmse = max(row["mean_validated_surrogate_target_rmse_db"] for row in rows) * 1.15
-    bar_w = min(82.0, plot_w / max(len(rows), 1) * 0.55)
-    gap = plot_w / max(len(rows), 1)
+    row_gap = plot_h / max(len(rows), 1)
+    bar_h = min(68.0, row_gap * 0.55)
 
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
-        "<title>Design Freedom vs Target Fit</title>",
+        "<title>Mechanism Condition vs Target Fit</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Design Freedom vs Validated Target-Fit Error</text>',
-        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Lower RMSE means better directivity matching. Bars show mean validated surrogate target-shape RMSE across the same target seeds.</text>',
+        '<text x="32" y="40" font-family="Arial, sans-serif" font-size="26" fill="#111">Mechanism Condition vs Validated Target-Fit Error</text>',
+        '<text x="32" y="66" font-family="Arial, sans-serif" font-size="16" fill="#666">Lower RMSE means better directivity matching. One bar per ablation condition, averaged across the same target seeds.</text>',
     ]
     for tick_index in range(6):
         value = max_rmse * tick_index / 5.0
-        y = margin_top + (1.0 - value / max(max_rmse, 1.0e-9)) * plot_h
-        svg.append(f'<line x1="{margin_left}" y1="{y:.1f}" x2="{width - margin_right}" y2="{y:.1f}" stroke="#eeeeee" stroke-width="1" />')
-        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#666">{value:.1f}</text>')
+        x = margin_left + (value / max(max_rmse, 1.0e-9)) * plot_w
+        svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 22:.1f}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#666">{value:.1f}</text>')
 
     for index, row in enumerate(rows):
         value = row["mean_validated_surrogate_target_rmse_db"]
-        x = margin_left + index * gap + 0.5 * gap
-        bar_h = (value / max(max_rmse, 1.0e-9)) * plot_h
-        y = margin_top + plot_h - bar_h
-        svg.append(f'<rect x="{x - bar_w / 2:.1f}" y="{y:.1f}" width="{bar_w:.1f}" height="{bar_h:.1f}" fill="#1f77b4" rx="3" opacity="0.9" />')
-        svg.append(f'<text x="{x:.1f}" y="{y - 6:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#333">{value:.2f}</text>')
-        label = row["freedom_level"].replace("_", " ")
-        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 26}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#444" transform="rotate(-35 {x:.1f} {height - margin_bottom + 26})">{label}</text>')
+        y = margin_top + index * row_gap + (row_gap - bar_h) / 2
+        w = (value / max(max_rmse, 1.0e-9)) * plot_w
+        label = row["freedom_label"]
+        svg.append(f'<rect x="{margin_left:.1f}" y="{y:.1f}" width="{w:.1f}" height="{bar_h:.1f}" fill="#1f77b4" rx="4" opacity="0.9" />')
+        svg.append(f'<text x="{margin_left - 14:.1f}" y="{y + bar_h * 0.62:.1f}" font-family="Arial, sans-serif" font-size="17" text-anchor="end" fill="#333">{label}</text>')
+        value_x = min(margin_left + w + 10.0, width - margin_right - 8.0)
+        svg.append(f'<text x="{value_x:.1f}" y="{y + bar_h * 0.62:.1f}" font-family="Arial, sans-serif" font-size="15" fill="#333">{value:.2f} dB</text>')
 
-    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 16}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Allowed geometry mutation freedom</text>')
-    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="14" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Mean validated target RMSE (dB)</text>')
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 18}" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#222">Mean validated target-shape RMSE (dB)</text>')
     svg.append("</svg>")
     return "\n".join(svg)
 
 
-def _freedom_tradeoff_chart_svg(summary: list[dict], width: int = 1120, height: int = 560) -> str:
+def _freedom_tradeoff_chart_svg(summary: list[dict], width: int = 1512, height: int = 756) -> str:
     rows = [
         row for row in summary
         if row["mean_surrogate_target_rmse_improvement_db"] is not None
@@ -298,10 +297,10 @@ def _freedom_tradeoff_chart_svg(summary: list[dict], width: int = 1120, height: 
     if len(rows) < 2:
         return ""
 
-    margin_left = 95
-    margin_right = 120
-    margin_top = 82
-    margin_bottom = 80
+    margin_left = 128
+    margin_right = 360
+    margin_top = 116
+    margin_bottom = 108
     plot_w = width - margin_left - margin_right
     plot_h = height - margin_top - margin_bottom
     min_x = min(row["mean_surrogate_target_rmse_improvement_db"] for row in rows)
@@ -323,32 +322,48 @@ def _freedom_tradeoff_chart_svg(summary: list[dict], width: int = 1120, height: 
 
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
-        "<title>Design Freedom Acoustic-Aero Tradeoff</title>",
+        "<title>Mechanism Condition Acoustic-Aero Tradeoff</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Design Freedom: Acoustic Gain vs Drag Cost</text>',
-        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Each point is a freedom level averaged across target seeds. Right is better acoustic improvement; lower is lower drag cost.</text>',
+        '<text x="32" y="40" font-family="Arial, sans-serif" font-size="26" fill="#111">Mechanism Conditions: Acoustic Gain vs Drag Cost</text>',
+        '<text x="32" y="66" font-family="Arial, sans-serif" font-size="16" fill="#666">Each point is one ablation condition averaged across target seeds. Right is better acoustic improvement; lower is lower drag cost.</text>',
     ]
 
     for tick_index in range(6):
         value = min_x + (max_x - min_x) * tick_index / 5.0
         x = x_map(value)
         svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
-        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{value:.1f}</text>')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#666">{value:.1f}</text>')
     for tick_index in range(6):
         value = min_y + (max_y - min_y) * tick_index / 5.0
         y = y_map(value)
         svg.append(f'<line x1="{margin_left}" y1="{y:.1f}" x2="{width - margin_right}" y2="{y:.1f}" stroke="#f3f3f3" stroke-width="1" />')
-        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#666">{value:.2f}</text>')
+        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="14" text-anchor="end" fill="#666">{value:.2f}</text>')
 
     svg.append(f'<line x1="{margin_left}" y1="{y_map(1.0):.1f}" x2="{width - margin_right}" y2="{y_map(1.0):.1f}" stroke="#999999" stroke-width="1.2" stroke-dasharray="4,4" />')
-    for row in rows:
+    palette = ["#1f77b4", "#2ca02c", "#e67e22", "#d62728", "#9467bd", "#8c564b"]
+    duplicate_counts: dict[tuple[float, float], int] = {}
+    legend_x = width - margin_right + 26
+    legend_y = margin_top + 10
+    svg.append(f'<rect x="{legend_x - 16}" y="{legend_y - 18}" width="{margin_right - 40}" height="{min(38 + 64 * len(rows), height - margin_top - margin_bottom - 8)}" fill="#fafafa" stroke="#dddddd" rx="8" />')
+    svg.append(f'<text x="{legend_x:.1f}" y="{legend_y:.1f}" font-family="Arial, sans-serif" font-size="17" fill="#222">Condition key</text>')
+    for index, row in enumerate(rows):
         x = x_map(row["mean_surrogate_target_rmse_improvement_db"])
         y = y_map(row["mean_drag_ratio"])
-        svg.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6.5" fill="#2ca02c" opacity="0.9" />')
-        svg.append(f'<text x="{x + 9:.1f}" y="{y - 9:.1f}" font-family="Arial, sans-serif" font-size="10" fill="#444">{row["freedom_level"].replace("_", " ")}</text>')
+        key = (round(row["mean_surrogate_target_rmse_improvement_db"], 9), round(row["mean_drag_ratio"], 9))
+        dup_index = duplicate_counts.get(key, 0)
+        duplicate_counts[key] = dup_index + 1
+        if dup_index:
+            x += 10.0 * dup_index
+            y -= 10.0 * dup_index
+        color = palette[index % len(palette)]
+        svg.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="7.5" fill="{color}" stroke="#ffffff" stroke-width="1.5" opacity="0.95" />')
+        row_y = legend_y + 28 + 56 * index
+        svg.append(f'<circle cx="{legend_x + 8:.1f}" cy="{row_y - 6:.1f}" r="7.0" fill="{color}" stroke="#ffffff" stroke-width="1.2" />')
+        svg.append(f'<text x="{legend_x + 24:.1f}" y="{row_y - 1:.1f}" font-family="Arial, sans-serif" font-size="15" fill="#222">{row["freedom_label"]}</text>')
+        svg.append(f'<text x="{legend_x + 24:.1f}" y="{row_y + 18:.1f}" font-family="Arial, sans-serif" font-size="13" fill="#666">improvement {row["mean_surrogate_target_rmse_improvement_db"]:.2f} dB, drag ratio {row["mean_drag_ratio"]:.3f}</text>')
 
-    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 16}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Mean target RMSE improvement vs baseline (dB)</text>')
-    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="14" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Mean drag ratio</text>')
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 16}" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#222">Mean target RMSE improvement vs baseline (dB)</text>')
+    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="18" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Mean drag ratio</text>')
     svg.append("</svg>")
     return "\n".join(svg)
 
@@ -357,17 +372,17 @@ def _freedom_tradeoff_chart_svg(summary: list[dict], width: int = 1120, height: 
 # SVG: MSE bar chart
 # ─────────────────────────────────────────────────────────────────────
 
-def _mse_bar_chart_svg(results: list[dict], width: int = 1100, height: int = 520) -> str:
+def _mse_bar_chart_svg(results: list[dict], width: int = 1485, height: int = 702) -> str:
     """Horizontal bar chart of MSE per target, sorted best → worst."""
     sorted_results = sorted(results, key=lambda r: r["mse_db2"] or 999)
     n = len(sorted_results)
     if n == 0:
         return ""
 
-    margin_left = 120
-    margin_right = 40
-    margin_top = 70
-    margin_bottom = 60
+    margin_left = 112
+    margin_right = 64
+    margin_top = 102
+    margin_bottom = 92
     plot_w = width - margin_left - margin_right
     plot_h = height - margin_top - margin_bottom
     bar_h = max(4, min(28, plot_h / n - 4))
@@ -384,11 +399,25 @@ def _mse_bar_chart_svg(results: list[dict], width: int = 1100, height: int = 520
         f'viewBox="0 0 {width} {height}" role="img">',
         f"<title>Campaign MSE Across Arbitrary Targets</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        f'<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" '
+        f'<text x="32" y="40" font-family="Arial, sans-serif" font-size="26" '
         f'fill="#111">Shape-Matching Error Across {n} Arbitrary Targets</text>',
-        f'<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" '
-        f'fill="#666">Lower MSE = better match. Mean MSE = {mean_mse:.1f} dB²</text>',
+        f'<text x="32" y="66" font-family="Arial, sans-serif" font-size="16" '
+        f'fill="#666">One bar per optimization run, sorted from best to worst. Lower MSE means better target-shape matching. Mean MSE = {mean_mse:.1f} dB²</text>',
     ]
+
+    for tick_index in range(6):
+        value = max_mse * tick_index / 5.0
+        x = margin_left + (value / max(max_mse, 1.0e-9)) * plot_w
+        svg.append(
+            f'<line x1="{x:.1f}" y1="{margin_top}" '
+            f'x2="{x:.1f}" y2="{height - margin_bottom}" '
+            f'stroke="#efefef" stroke-width="1" />'
+        )
+        svg.append(
+            f'<text x="{x:.1f}" y="{height - margin_bottom + 22}" '
+            f'font-family="Arial, sans-serif" font-size="14" text-anchor="middle" '
+            f'fill="#666">{value:.0f}</text>'
+        )
 
     # Mean line
     mean_x = margin_left + (mean_mse / max_mse) * plot_w
@@ -399,7 +428,7 @@ def _mse_bar_chart_svg(results: list[dict], width: int = 1100, height: int = 520
     )
     svg.append(
         f'<text x="{mean_x + 6:.1f}" y="{margin_top + 14}" '
-        f'font-family="Arial, sans-serif" font-size="11" fill="#e74c3c">'
+        f'font-family="Arial, sans-serif" font-size="14" fill="#e74c3c">'
         f'mean={mean_mse:.1f}</text>'
     )
 
@@ -425,23 +454,9 @@ def _mse_bar_chart_svg(results: list[dict], width: int = 1100, height: int = 520
             f'<title>Seed {r["seed"]}: MSE={mse:.1f} dB², {r["n_lobes"]} lobes</title>'
             f'</rect>'
         )
-        # Label on left
-        svg.append(
-            f'<text x="{margin_left - 8}" y="{y + bar_h / 2 + 4:.1f}" '
-            f'font-family="Arial, sans-serif" font-size="11" text-anchor="end" '
-            f'fill="#333">seed {r["seed"]}</text>'
-        )
-        # Value on right of bar
-        svg.append(
-            f'<text x="{margin_left + w + 6:.1f}" y="{y + bar_h / 2 + 4:.1f}" '
-            f'font-family="Arial, sans-serif" font-size="11" fill="#555">'
-            f'{mse:.1f}</text>'
-        )
-
-    # X axis label
     svg.append(
         f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 18}" '
-        f'font-family="Arial, sans-serif" font-size="14" text-anchor="middle" '
+        f'font-family="Arial, sans-serif" font-size="18" text-anchor="middle" '
         f'fill="#222">Normalized Mean Squared Error (dB²)</text>'
     )
 
@@ -449,7 +464,7 @@ def _mse_bar_chart_svg(results: list[dict], width: int = 1100, height: int = 520
     return "\n".join(svg)
 
 
-def _target_fit_chart_svg(results: list[dict], width: int = 1180, height: int = 560) -> str:
+def _target_fit_chart_svg(results: list[dict], width: int = 1593, height: int = 756) -> str:
     sorted_results = sorted(
         [
             result for result in results
@@ -462,10 +477,10 @@ def _target_fit_chart_svg(results: list[dict], width: int = 1180, height: int = 
     if not sorted_results:
         return ""
 
-    margin_left = 130
-    margin_right = 40
-    margin_top = 80
-    margin_bottom = 70
+    margin_left = 175
+    margin_right = 54
+    margin_top = 108
+    margin_bottom = 94
     plot_w = width - margin_left - margin_right
     plot_h = height - margin_top - margin_bottom
     n = len(sorted_results)
@@ -487,8 +502,8 @@ def _target_fit_chart_svg(results: list[dict], width: int = 1180, height: int = 
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
         "<title>Target-Fit Improvement Across Campaign</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Target-Fit Error Before and After Mutation</text>',
-        f'<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Baseline theory vs target, optimized theory vs target, and validated surrogate vs target. Mean validated RMSE = {mean_surrogate:.2f} dB</text>',
+        '<text x="32" y="40" font-family="Arial, sans-serif" font-size="26" fill="#111">Target-Fit Error Before and After Mutation</text>',
+        f'<text x="32" y="66" font-family="Arial, sans-serif" font-size="16" fill="#666">Three bars per run: baseline theory, optimized theory, and validated surrogate. Rows are sorted by validated surrogate RMSE. Mean validated RMSE = {mean_surrogate:.2f} dB</text>',
     ]
 
     for tick_index in range(6):
@@ -498,7 +513,7 @@ def _target_fit_chart_svg(results: list[dict], width: int = 1180, height: int = 
             f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />'
         )
         svg.append(
-            f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{value:.1f}</text>'
+            f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#666">{value:.1f}</text>'
         )
 
     for index, result in enumerate(sorted_results):
@@ -510,7 +525,7 @@ def _target_fit_chart_svg(results: list[dict], width: int = 1180, height: int = 
             ("validated_surrogate_target_rmse_db", "#d62728"),
         ]
         svg.append(
-            f'<text x="{margin_left - 10}" y="{label_y:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#333">seed {result["seed"]}</text>'
+            f'<text x="{margin_left - 10}" y="{label_y:.1f}" font-family="Arial, sans-serif" font-size="14" text-anchor="end" fill="#333"></text>'
         )
         for bar_index, (key, color) in enumerate(bars):
             value = result[key]
@@ -519,10 +534,6 @@ def _target_fit_chart_svg(results: list[dict], width: int = 1180, height: int = 
             svg.append(
                 f'<rect x="{margin_left}" y="{y:.1f}" width="{w:.1f}" height="{bar_h:.1f}" fill="{color}" rx="2" opacity="0.9" />'
             )
-        svg.append(
-            f'<text x="{margin_left + ((result["validated_surrogate_target_rmse_db"] / max_rmse) * plot_w) + 6:.1f}" y="{y0 + 4 + 2 * (bar_h + 2) + bar_h * 0.72:.1f}" font-family="Arial, sans-serif" font-size="10" fill="#555">{result["validated_surrogate_target_rmse_db"]:.2f}</text>'
-        )
-
     legend_y = height - 28
     legend = [
         ("#9aa0a6", "baseline theory"),
@@ -532,16 +543,16 @@ def _target_fit_chart_svg(results: list[dict], width: int = 1180, height: int = 
     legend_x = 40
     for color, label in legend:
         svg.append(f'<rect x="{legend_x}" y="{legend_y - 10}" width="18" height="10" fill="{color}" rx="2" />')
-        svg.append(f'<text x="{legend_x + 26}" y="{legend_y}" font-family="Arial, sans-serif" font-size="12" fill="#444">{label}</text>')
+        svg.append(f'<text x="{legend_x + 26}" y="{legend_y}" font-family="Arial, sans-serif" font-size="16" fill="#444">{label}</text>')
         legend_x += 170
     svg.append(
-        f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Peak-normalized target-shape RMSE (dB)</text>'
+        f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#222">Peak-normalized target-shape RMSE (dB)</text>'
     )
     svg.append("</svg>")
     return "\n".join(svg)
 
 
-def _mutation_effectiveness_svg(results: list[dict], width: int = 1020, height: int = 560) -> str:
+def _mutation_effectiveness_svg(results: list[dict], width: int = 1377, height: int = 756) -> str:
     points = [
         result for result in results
         if result["mutation_magnitude_index"] is not None
@@ -550,10 +561,10 @@ def _mutation_effectiveness_svg(results: list[dict], width: int = 1020, height: 
     if not points:
         return ""
 
-    margin_left = 90
-    margin_right = 40
-    margin_top = 80
-    margin_bottom = 70
+    margin_left = 121
+    margin_right = 54
+    margin_top = 108
+    margin_bottom = 94
     plot_w = width - margin_left - margin_right
     plot_h = height - margin_top - margin_bottom
     max_x = max(result["mutation_magnitude_index"] for result in points) * 1.1
@@ -576,8 +587,8 @@ def _mutation_effectiveness_svg(results: list[dict], width: int = 1020, height: 
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
         "<title>Mutation Effectiveness</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">How Much Mutation Bought How Much Target-Fit Improvement</text>',
-        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Each point is one target. Higher is better. Left-shifted high points indicate efficient geometry mutation.</text>',
+        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="29" fill="#111">How Much Mutation Bought How Much Target-Fit Improvement</text>',
+        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="17" fill="#666">Each point is one target. Higher is better. Left-shifted high points indicate efficient geometry mutation.</text>',
     ]
 
     zero_y = y_map(0.0)
@@ -586,27 +597,27 @@ def _mutation_effectiveness_svg(results: list[dict], width: int = 1020, height: 
         x_value = max_x * tick_index / 5.0
         x = x_map(x_value)
         svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
-        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{x_value:.1f}</text>')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#666">{x_value:.1f}</text>')
     for tick_index in range(6):
         y_value = min_y + (max_y - min_y) * tick_index / 5.0
         y = y_map(y_value)
         svg.append(f'<line x1="{margin_left}" y1="{y:.1f}" x2="{width - margin_right}" y2="{y:.1f}" stroke="#f3f3f3" stroke-width="1" />')
-        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#666">{y_value:.1f}</text>')
+        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="14" text-anchor="end" fill="#666">{y_value:.1f}</text>')
 
     for result in points:
         x = x_map(result["mutation_magnitude_index"])
         y = y_map(result["surrogate_target_rmse_improvement_db"])
         fill = "#2ca02c" if result["surrogate_target_rmse_improvement_db"] >= 0.0 else "#e74c3c"
         svg.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5.5" fill="{fill}" opacity="0.9" />')
-        svg.append(f'<text x="{x + 8:.1f}" y="{y - 8:.1f}" font-family="Arial, sans-serif" font-size="10" fill="#444">seed {result["seed"]}</text>')
+        svg.append(f'<text x="{x + 8:.1f}" y="{y - 8:.1f}" font-family="Arial, sans-serif" font-size="13" fill="#444"></text>')
 
-    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Mutation magnitude index</text>')
-    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="14" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Validated surrogate RMSE improvement vs baseline (dB)</text>')
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#222">Mutation magnitude index</text>')
+    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="18" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Validated surrogate RMSE improvement vs baseline (dB)</text>')
     svg.append("</svg>")
     return "\n".join(svg)
 
 
-def _aero_tradeoff_svg(results: list[dict], width: int = 1040, height: int = 560) -> str:
+def _aero_tradeoff_svg(results: list[dict], width: int = 1404, height: int = 756) -> str:
     points = [
         result for result in results
         if result["validated_surrogate_target_rmse_db"] is not None
@@ -616,10 +627,10 @@ def _aero_tradeoff_svg(results: list[dict], width: int = 1040, height: int = 560
     if not points:
         return ""
 
-    margin_left = 90
-    margin_right = 50
-    margin_top = 80
-    margin_bottom = 70
+    margin_left = 121
+    margin_right = 67
+    margin_top = 108
+    margin_bottom = 94
     plot_w = width - margin_left - margin_right
     plot_h = height - margin_top - margin_bottom
     min_x = min(result["validated_surrogate_target_rmse_db"] for result in points)
@@ -654,20 +665,20 @@ def _aero_tradeoff_svg(results: list[dict], width: int = 1040, height: int = 560
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
         "<title>Aerodynamic Tradeoff vs Target Fit</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Acoustic Fit vs Aerodynamic Cost</text>',
-        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Each point is one target. Left and low is better. Color shows lift-to-drag retention relative to the baseline geometry.</text>',
+        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="29" fill="#111">Acoustic Fit vs Aerodynamic Cost</text>',
+        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="17" fill="#666">Each point is one target. Left and low is better. Color shows lift-to-drag retention relative to the baseline geometry.</text>',
     ]
 
     for tick_index in range(6):
         x_value = min_x + (max_x - min_x) * tick_index / 5.0
         x = x_map(x_value)
         svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
-        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{x_value:.1f}</text>')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#666">{x_value:.1f}</text>')
     for tick_index in range(6):
         y_value = min_y + (max_y - min_y) * tick_index / 5.0
         y = y_map(y_value)
         svg.append(f'<line x1="{margin_left}" y1="{y:.1f}" x2="{width - margin_right}" y2="{y:.1f}" stroke="#f3f3f3" stroke-width="1" />')
-        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#666">{y_value:.2f}</text>')
+        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="14" text-anchor="end" fill="#666">{y_value:.2f}</text>')
 
     svg.append(f'<line x1="{margin_left}" y1="{y_map(1.0):.1f}" x2="{width - margin_right}" y2="{y_map(1.0):.1f}" stroke="#999999" stroke-width="1.2" stroke-dasharray="4,4" />')
     for result in points:
@@ -675,16 +686,16 @@ def _aero_tradeoff_svg(results: list[dict], width: int = 1040, height: int = 560
         y = y_map(result["drag_ratio"])
         fill = color_for_ld(result["lift_to_drag_retention"])
         svg.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6" fill="{fill}" opacity="0.92" />')
-        svg.append(f'<text x="{x + 8:.1f}" y="{y - 8:.1f}" font-family="Arial, sans-serif" font-size="10" fill="#444">seed {result["seed"]}</text>')
+        svg.append(f'<text x="{x + 8:.1f}" y="{y - 8:.1f}" font-family="Arial, sans-serif" font-size="13" fill="#444"></text>')
 
-    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Validated surrogate target-shape RMSE (dB)</text>')
-    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="14" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Profile-drag proxy ratio vs baseline</text>')
-    svg.append(f'<text x="{width - 240}" y="{height - 42}" font-family="Arial, sans-serif" font-size="11" fill="#666">reference line: drag ratio = 1.0</text>')
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#222">Validated surrogate target-shape RMSE (dB)</text>')
+    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="18" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Profile-drag proxy ratio vs baseline</text>')
+    svg.append(f'<text x="{width - 240}" y="{height - 42}" font-family="Arial, sans-serif" font-size="14" fill="#666">reference line: drag ratio = 1.0</text>')
     svg.append("</svg>")
     return "\n".join(svg)
 
 
-def _aero_retention_chart_svg(results: list[dict], width: int = 1180, height: int = 620) -> str:
+def _aero_retention_chart_svg(results: list[dict], width: int = 1593, height: int = 837) -> str:
     sorted_results = sorted(
         [
             result for result in results
@@ -698,10 +709,10 @@ def _aero_retention_chart_svg(results: list[dict], width: int = 1180, height: in
     if not sorted_results:
         return ""
 
-    margin_left = 130
-    margin_right = 40
-    margin_top = 84
-    margin_bottom = 74
+    margin_left = 175
+    margin_right = 54
+    margin_top = 113
+    margin_bottom = 99
     plot_w = width - margin_left - margin_right
     plot_h = height - margin_top - margin_bottom
     n = len(sorted_results)
@@ -724,8 +735,8 @@ def _aero_retention_chart_svg(results: list[dict], width: int = 1180, height: in
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
         "<title>Aerodynamic Retention Relative to Baseline</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Aerodynamic Proxy Retention Relative to Baseline Geometry</text>',
-        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Per target: signed lift retention, drag ratio, and lift-to-drag retention. Values near 1.0 indicate little aerodynamic departure from the reference feathered geometry.</text>',
+        '<text x="32" y="40" font-family="Arial, sans-serif" font-size="26" fill="#111">Aerodynamic Proxy Retention Relative to Baseline Geometry</text>',
+        '<text x="32" y="66" font-family="Arial, sans-serif" font-size="16" fill="#666">Per run: signed lift retention, drag ratio, and lift-to-drag retention. Rows are sorted by validated surrogate RMSE.</text>',
     ]
 
     zero_x = x_map(0.0)
@@ -736,7 +747,7 @@ def _aero_retention_chart_svg(results: list[dict], width: int = 1180, height: in
         value = min_value + (max_value - min_value) * tick_index / 5.0
         x = x_map(value)
         svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
-        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{value:.2f}</text>')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#666">{value:.2f}</text>')
 
     for index, result in enumerate(sorted_results):
         y0 = margin_top + index * group_h
@@ -746,21 +757,13 @@ def _aero_retention_chart_svg(results: list[dict], width: int = 1180, height: in
             ("drag_ratio", "#e67e22"),
             ("lift_to_drag_retention", "#1f77b4"),
         ]
-        svg.append(f'<text x="{margin_left - 10}" y="{label_y:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#333">seed {result["seed"]}</text>')
+        svg.append(f'<text x="{margin_left - 10}" y="{label_y:.1f}" font-family="Arial, sans-serif" font-size="14" text-anchor="end" fill="#333"></text>')
         for bar_index, (key, color) in enumerate(bars):
             value = result[key]
             y = y0 + 4 + bar_index * (bar_h + 2)
             x0 = x_map(min(0.0, value))
             x1 = x_map(max(0.0, value))
             svg.append(f'<rect x="{x0:.1f}" y="{y:.1f}" width="{(x1 - x0):.1f}" height="{bar_h:.1f}" fill="{color}" rx="2" opacity="0.9" />')
-        ld_text_x = x_map(result["lift_to_drag_retention"]) + 6
-        ld_text_y = y0 + 4 + 2 * (bar_h + 2) + bar_h * 0.72
-        svg.append(
-            f'<text x="{ld_text_x:.1f}" y="{ld_text_y:.1f}" '
-            f'font-family="Arial, sans-serif" font-size="10" fill="#555">'
-            f'{result["lift_to_drag_retention"]:.2f}</text>'
-        )
-
     legend_y = height - 30
     legend = [
         ("#2ca02c", "lift retention"),
@@ -770,9 +773,9 @@ def _aero_retention_chart_svg(results: list[dict], width: int = 1180, height: in
     legend_x = 40
     for color, label in legend:
         svg.append(f'<rect x="{legend_x}" y="{legend_y - 10}" width="18" height="10" fill="{color}" rx="2" />')
-        svg.append(f'<text x="{legend_x + 26}" y="{legend_y}" font-family="Arial, sans-serif" font-size="12" fill="#444">{label}</text>')
+        svg.append(f'<text x="{legend_x + 26}" y="{legend_y}" font-family="Arial, sans-serif" font-size="16" fill="#444">{label}</text>')
         legend_x += 190
-    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Relative aero-proxy value vs baseline</text>')
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#222">Relative aero-proxy value vs baseline</text>')
     svg.append("</svg>")
     return "\n".join(svg)
 
@@ -820,7 +823,7 @@ def _mini_polar(
     if not freq_rows:
         svg.append(
             f'<text x="{cx:.1f}" y="{cy + 4:.1f}" font-family="Arial, sans-serif" '
-            f'font-size="10" text-anchor="middle" fill="#999">no data</text>'
+            f'font-size="13" text-anchor="middle" fill="#999">no data</text>'
         )
         return svg
 
@@ -884,13 +887,13 @@ def _mini_polar(
     # Label: seed
     svg.append(
         f'<text x="{cx:.1f}" y="{cy - radius - 6:.1f}" font-family="Arial, sans-serif" '
-        f'font-size="11" text-anchor="middle" fill="#333">seed {seed}</text>'
+        f'font-size="14" text-anchor="middle" fill="#333"></text>'
     )
     # Label: MSE
     if mse is not None:
         svg.append(
             f'<text x="{cx:.1f}" y="{cy + radius + 14:.1f}" font-family="Arial, sans-serif" '
-            f'font-size="10" text-anchor="middle" fill="#888">MSE {mse:.1f}</text>'
+            f'font-size="13" text-anchor="middle" fill="#888">MSE {mse:.1f}</text>'
         )
 
     return svg
@@ -899,14 +902,15 @@ def _mini_polar(
 def _directivity_grid_svg(
     campaign_dir: Path,
     results: list[dict],
-    width: int = 1200,
+    width: int = 1620,
 ) -> str:
     """Generate a grid of small-multiple directivity polar plots."""
+    results = [r for r in results if str(r.get("freedom_level", "full")) == "full"]
     n = len(results)
     if n == 0:
         return ""
 
-    cols = min(5, n)
+    cols = min(10, n)
     rows = math.ceil(n / cols)
     cell_w = width // cols
     cell_h = cell_w  # square cells
@@ -921,9 +925,9 @@ def _directivity_grid_svg(
         f'viewBox="0 0 {width} {total_h}" role="img">',
         f"<title>Directivity Grid — {n} Arbitrary Targets</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        f'<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" '
+        f'<text x="28" y="36" font-family="Arial, sans-serif" font-size="29" '
         f'fill="#111">Directivity Achieved vs Target — {n} Arbitrary Shapes</text>',
-        f'<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" '
+        f'<text x="28" y="56" font-family="Arial, sans-serif" font-size="17" '
         f'fill="#666">Each cell: 1 kHz polar plot. '
         f'Red=simulated, Blue=theory, Green dashed=target. '
         f'Mean MSE={mean_mse:.1f} dB²</text>',
@@ -954,19 +958,19 @@ def _directivity_grid_svg(
         f'<line x1="40" y1="{legend_y}" x2="70" y2="{legend_y}" '
         f'stroke="#d62728" stroke-width="2.5" />'
         f'<text x="78" y="{legend_y + 4}" font-family="Arial, sans-serif" '
-        f'font-size="12" fill="#444">simulated</text>'
+        f'font-size="16" fill="#444">simulated</text>'
     )
     svg.append(
         f'<line x1="160" y1="{legend_y}" x2="190" y2="{legend_y}" '
         f'stroke="#1f77b4" stroke-width="2.5" />'
         f'<text x="198" y="{legend_y + 4}" font-family="Arial, sans-serif" '
-        f'font-size="12" fill="#444">theory</text>'
+        f'font-size="16" fill="#444">theory</text>'
     )
     svg.append(
         f'<line x1="260" y1="{legend_y}" x2="290" y2="{legend_y}" '
         f'stroke="#2ca02c" stroke-width="2.5" stroke-dasharray="5,3" />'
         f'<text x="298" y="{legend_y + 4}" font-family="Arial, sans-serif" '
-        f'font-size="12" fill="#444">target shape</text>'
+        f'font-size="16" fill="#444">target shape</text>'
     )
 
     svg.append("</svg>")

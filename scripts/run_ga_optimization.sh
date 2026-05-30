@@ -12,7 +12,7 @@ MAXITER="${MAXITER:-0}"
 N_ETA="${N_ETA:-12}"
 N_TARGETS="${N_TARGETS:-50}"
 START_SEED="${START_SEED:-1}"
-FREEDOM_LEVELS="${FREEDOM_LEVELS:-incidence,incidence_spacing,incidence_spacing_root_z,incidence_spacing_root_z_sweep,incidence_spacing_root_z_sweep_z_curve,full}"
+FREEDOM_LEVELS="${FREEDOM_LEVELS:-incidence,zero_coherence,no_delay,full}"
 
 SECONDS=0
 

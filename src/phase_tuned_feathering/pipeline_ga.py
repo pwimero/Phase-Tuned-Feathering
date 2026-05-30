@@ -711,7 +711,6 @@ def run_campaign(args: argparse.Namespace) -> None:
 
     for target_index in range(args.n_targets):
         seed = args.start_seed + target_index
-        warm_start_genes: list[float] | None = None
         for freedom_level in freedom_levels:
             if len(freedom_levels) == 1 and freedom_level == "full":
                 level_output_dir = campaign_dir
@@ -727,11 +726,11 @@ def run_campaign(args: argparse.Namespace) -> None:
             target_args.output_dir = target_dir
             target_args.seed = seed
             target_args.freedom_level = freedom_level
-            warm_start_genes = _run_single_target(
+            _run_single_target(
                 target_dir,
                 target_args,
                 runtime=runtime,
-                warm_start_genes=warm_start_genes,
+                warm_start_genes=None,
             )
             print("")
 

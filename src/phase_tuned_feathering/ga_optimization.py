@@ -26,7 +26,7 @@ class GAConfig:
     mutation: tuple[float, float] = (0.5, 1.0)
     recombination: float = 0.7
     seed: int = 42
-    patience: int = 10
+    patience: int = 20
     min_fitness_improvement_db2: float = 0.015
     freedom_level: str = "full"
 

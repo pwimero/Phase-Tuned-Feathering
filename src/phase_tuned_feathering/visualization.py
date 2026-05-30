@@ -122,7 +122,7 @@ def _axis_glyph(view: str, x: float, y: float) -> str:
         "isometric": (("x", 42, 0), ("y", 28, 18), ("z", 0, -36)),
     }[view]
     items = [
-        f'<text x="{x}" y="{y - 46}" font-family="Arial, sans-serif" font-size="13" fill="#333">paper axes</text>'
+        f'<text x="{x}" y="{y - 46}" font-family="Arial, sans-serif" font-size="17" fill="#333">paper axes</text>'
     ]
     for label, dx, dy in vectors:
         items.append(
@@ -131,7 +131,7 @@ def _axis_glyph(view: str, x: float, y: float) -> str:
         )
         items.append(
             f'<text x="{x + dx + 6:.1f}" y="{y + dy + 4:.1f}" '
-            'font-family="Arial, sans-serif" font-size="13" fill="#222">'
+            'font-family="Arial, sans-serif" font-size="17" fill="#222">'
             f"{html.escape(label)}</text>"
         )
     return "\n".join(items)
@@ -140,8 +140,8 @@ def _axis_glyph(view: str, x: float, y: float) -> str:
 def source_grid_svg(
     grid: SourceGrid,
     view: str = "isometric",
-    width: int = 1200,
-    height: int = 800,
+    width: int = 1620,
+    height: int = 1080,
     title: str | None = None,
     show_loading_vectors: bool = True,
 ) -> str:
@@ -155,7 +155,7 @@ def source_grid_svg(
         f'viewBox="0 0 {width} {height}" role="img">',
         f"<title>{html.escape(title)}</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        f'<text x="32" y="38" font-family="Arial, sans-serif" font-size="24" '
+        f'<text x="32" y="38" font-family="Arial, sans-serif" font-size="32" '
         f'fill="#111111">{html.escape(title)}</text>',
     ]
 
@@ -188,12 +188,12 @@ def source_grid_svg(
         tip_x, tip_y = transform(projected[indices[-1]])
         svg.append(
             f'<text x="{root_x + 8:.1f}" y="{root_y - 7:.1f}" '
-            'font-family="Arial, sans-serif" font-size="12" '
+            'font-family="Arial, sans-serif" font-size="16" '
             f'fill="{color}">F{feather_id} root</text>'
         )
         svg.append(
             f'<text x="{tip_x + 8:.1f}" y="{tip_y + 4:.1f}" '
-            'font-family="Arial, sans-serif" font-size="12" '
+            'font-family="Arial, sans-serif" font-size="16" '
             f'fill="{color}">tip</text>'
         )
 
@@ -232,7 +232,7 @@ def source_grid_svg(
     )
     svg.append(
         f'<text x="{bar_x}" y="{bar_y - 8}" font-family="Arial, sans-serif" '
-        f'font-size="13" fill="#333">{scale_bar_m:g} m</text>'
+        f'font-size="17" fill="#333">{scale_bar_m:g} m</text>'
     )
 
     legend_items = []
@@ -244,7 +244,7 @@ def source_grid_svg(
     )
     legend_items.append(
         f'<text x="{legend_x}" y="{legend_y - 7}" font-family="Arial, sans-serif" '
-        'font-size="13" fill="#333">feather source lines</text>'
+        'font-size="17" fill="#333">feather source lines</text>'
     )
     for offset, feather_id in enumerate(sorted(by_feather), start=1):
         y = legend_y + 18 * offset
@@ -255,7 +255,7 @@ def source_grid_svg(
         )
         legend_items.append(
             f'<text x="{legend_x + 34}" y="{y + 4}" font-family="Arial, sans-serif" '
-            f'font-size="12" fill="#333">F{feather_id}</text>'
+            f'font-size="16" fill="#333">F{feather_id}</text>'
         )
     svg.extend(legend_items)
 
@@ -270,7 +270,7 @@ def source_grid_svg(
     legend_y = height - 34
     svg.append(
         f'<text x="{legend_x}" y="{legend_y}" font-family="Arial, sans-serif" '
-        'font-size="14" fill="#333333">'
+        'font-size="18" fill="#333333">'
         f"view={html.escape(view)} | sources={grid.n} | "
         f"projected bounds: {u_min:.3f}..{u_max:.3f} m, {v_min:.3f}..{v_max:.3f} m | "
         f"chord range={chord_min:.4f}..{chord_max:.4f} m"
@@ -284,8 +284,8 @@ def write_source_grid_svg(
     path: str | Path,
     grid: SourceGrid,
     view: str = "isometric",
-    width: int = 1200,
-    height: int = 800,
+    width: int = 1620,
+    height: int = 1080,
     show_loading_vectors: bool = True,
 ) -> Path:
     output_path = Path(path)
@@ -366,7 +366,7 @@ def _figure_header(width: int, height: int, title: str) -> list[str]:
         f'viewBox="0 0 {width} {height}" role="img">',
         f"<title>{html.escape(title)}</title>",
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        f'<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" '
+        f'<text x="28" y="36" font-family="Arial, sans-serif" font-size="29" '
         f'fill="#111111">{html.escape(title)}</text>',
     ]
 
@@ -390,10 +390,10 @@ def _axes(
             f'<line x1="{x0}" y1="{y0}" x2="{x1}" y2="{y0}" stroke="#222" stroke-width="1.4" />',
             f'<line x1="{x0}" y1="{y0}" x2="{x0}" y2="{y1}" stroke="#222" stroke-width="1.4" />',
             f'<text x="{0.5 * (x0 + x1):.1f}" y="{height - 20}" '
-            'font-family="Arial, sans-serif" font-size="15" text-anchor="middle" '
+            'font-family="Arial, sans-serif" font-size="20" text-anchor="middle" '
             f'fill="#222">{html.escape(x_label)}</text>',
             f'<text x="22" y="{0.5 * (y0 + y1):.1f}" '
-            'font-family="Arial, sans-serif" font-size="15" text-anchor="middle" '
+            'font-family="Arial, sans-serif" font-size="20" text-anchor="middle" '
             f'transform="rotate(-90 22 {0.5 * (y0 + y1):.1f})" '
             f'fill="#222">{html.escape(y_label)}</text>',
         ]
@@ -420,7 +420,7 @@ def _tick_labels(
         items.append(f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x:.1f}" y2="{y + 6:.1f}" stroke="#222" />')
         items.append(
             f'<text x="{x:.1f}" y="{height - 45}" font-family="Arial, sans-serif" '
-            f'font-size="12" text-anchor="middle" fill="#333">{html.escape(x_formatter(value))}</text>'
+            f'font-size="16" text-anchor="middle" fill="#333">{html.escape(x_formatter(value))}</text>'
         )
     for index in range(y_count):
         value = y_bounds[0] + (y_bounds[1] - y_bounds[0]) * index / max(y_count - 1, 1)
@@ -428,7 +428,7 @@ def _tick_labels(
         items.append(f'<line x1="{x - 6:.1f}" y1="{y:.1f}" x2="{x:.1f}" y2="{y:.1f}" stroke="#222" />')
         items.append(
             f'<text x="72" y="{y + 4:.1f}" font-family="Arial, sans-serif" '
-            f'font-size="12" text-anchor="end" fill="#333">{html.escape(y_formatter(value))}</text>'
+            f'font-size="16" text-anchor="end" fill="#333">{html.escape(y_formatter(value))}</text>'
         )
     return "\n".join(items)
 
@@ -468,15 +468,15 @@ def _comparison_context(result: ComparisonResult) -> str:
 def _footer(width: int, height: int, text: str) -> str:
     return (
         f'<text x="{width / 2:.1f}" y="{height - 10}" '
-        'font-family="Arial, sans-serif" font-size="12" text-anchor="middle" '
+        'font-family="Arial, sans-serif" font-size="16" text-anchor="middle" '
         f'fill="#444">{html.escape(text)}</text>'
     )
 
 
 def theory_vs_simulation_scatter_svg(
     result: ComparisonResult,
-    width: int = 980,
-    height: int = 760,
+    width: int = 1323,
+    height: int = 1026,
 ) -> str:
     rows = result.rows
     values = tuple(row.simulated_level_db for row in rows) + tuple(row.theory_level_db for row in rows)
@@ -518,7 +518,7 @@ def theory_vs_simulation_scatter_svg(
     svg.append(_legend(width - 210, 74))
     svg.append(
         f'<text x="{width - 210}" y="150" font-family="Arial, sans-serif" '
-        'font-size="12" fill="#444">circle size increases with frequency</text>'
+        'font-size="16" fill="#444">circle size increases with frequency</text>'
     )
     svg.append(_footer(width, height, _comparison_context(result)))
     svg.append("</svg>")
@@ -529,16 +529,16 @@ def _legend(x: float, y: float) -> str:
     return "\n".join(
         [
             f'<rect x="{x}" y="{y - 20}" width="178" height="58" fill="#fff" stroke="#ddd" />',
-            f'<circle cx="{x + 16}" cy="{y}" r="5" fill="#1f77b4" /><text x="{x + 30}" y="{y + 4}" font-family="Arial, sans-serif" font-size="13">calibration</text>',
-            f'<circle cx="{x + 16}" cy="{y + 24}" r="5" fill="#d62728" /><text x="{x + 30}" y="{y + 28}" font-family="Arial, sans-serif" font-size="13">validation</text>',
+            f'<circle cx="{x + 16}" cy="{y}" r="5" fill="#1f77b4" /><text x="{x + 30}" y="{y + 4}" font-family="Arial, sans-serif" font-size="17">calibration</text>',
+            f'<circle cx="{x + 16}" cy="{y + 24}" r="5" fill="#d62728" /><text x="{x + 30}" y="{y + 28}" font-family="Arial, sans-serif" font-size="17">validation</text>',
         ]
     )
 
 
 def error_by_frequency_svg(
     result: ComparisonResult,
-    width: int = 1040,
-    height: int = 680,
+    width: int = 1404,
+    height: int = 918,
 ) -> str:
     grouped: dict[tuple[str, float], list[ComparisonRow]] = {}
     for row in result.rows:
@@ -598,7 +598,7 @@ def error_by_frequency_svg(
     svg.append(_legend(width - 210, 74))
     svg.append(
         f'<text x="{width - 252}" y="150" font-family="Arial, sans-serif" '
-        'font-size="12" fill="#444">vertical bars show +/- mean absolute error; dots show signed mean</text>'
+        'font-size="16" fill="#444">vertical bars show +/- mean absolute error; dots show signed mean</text>'
     )
     svg.append(_footer(width, height, _comparison_context(result)))
     svg.append("</svg>")
@@ -608,8 +608,8 @@ def error_by_frequency_svg(
 def spectrum_overlay_svg(
     result: ComparisonResult,
     split: str = "validation",
-    width: int = 1080,
-    height: int = 720,
+    width: int = 1458,
+    height: int = 972,
 ) -> str:
     rows = tuple(row for row in result.rows if row.split == split)
     if not rows:
@@ -694,13 +694,13 @@ def spectrum_overlay_svg(
     svg.append(
         f'<rect x="{width - 230}" y="54" width="198" height="58" fill="#fff" stroke="#ddd" />'
         f'<line x1="{width - 210}" y1="76" x2="{width - 170}" y2="76" stroke="#d62728" stroke-width="3" />'
-        f'<text x="{width - 160}" y="80" font-family="Arial, sans-serif" font-size="13">simulated</text>'
+        f'<text x="{width - 160}" y="80" font-family="Arial, sans-serif" font-size="17">simulated</text>'
         f'<line x1="{width - 210}" y1="100" x2="{width - 170}" y2="100" stroke="#1f77b4" stroke-width="3" />'
-        f'<text x="{width - 160}" y="104" font-family="Arial, sans-serif" font-size="13">theory</text>'
+        f'<text x="{width - 160}" y="104" font-family="Arial, sans-serif" font-size="17">theory</text>'
     )
     svg.append(
         f'<text x="{width - 230}" y="132" font-family="Arial, sans-serif" '
-        'font-size="12" fill="#444">thick pale bars show min..max across observer directions</text>'
+        'font-size="16" fill="#444">thick pale bars show min..max across observer directions</text>'
     )
     svg.append(_footer(width, height, _comparison_context(result)))
     svg.append("</svg>")
@@ -709,8 +709,8 @@ def spectrum_overlay_svg(
 
 def error_histogram_svg(
     result: ComparisonResult,
-    width: int = 980,
-    height: int = 660,
+    width: int = 1323,
+    height: int = 891,
 ) -> str:
     errors = tuple(row.error_db for row in result.rows)
     x_bounds = _value_bounds(errors, 0.1)
@@ -768,8 +768,8 @@ def directivity_comparison_svg(
     result: ComparisonResult,
     frequency_hz: float | None = None,
     split: str = "validation",
-    width: int = 860,
-    height: int = 820,
+    width: int = 1161,
+    height: int = 1107,
 ) -> str:
     candidate_rows = tuple(row for row in result.rows if row.split == split)
     if not candidate_rows:
@@ -809,7 +809,7 @@ def directivity_comparison_svg(
         return (
             f'<text x="{center_x + (radius + offset) * math.cos(angle):.1f}" '
             f'y="{center_y - (radius + offset) * math.sin(angle) + 5:.1f}" '
-            'font-family="Arial, sans-serif" font-size="13" font-weight="600" '
+            'font-family="Arial, sans-serif" font-size="17" font-weight="600" '
             'text-anchor="middle" fill="#222">'
             f"{html.escape(text)}</text>"
         )
@@ -823,7 +823,7 @@ def directivity_comparison_svg(
         level_value = min_level + (level_span * (fraction - 0.12) / 0.88)
         svg.append(
             f'<text x="{center_x + 6:.1f}" y="{center_y - radius * fraction + 4:.1f}" '
-            'font-family="Arial, sans-serif" font-size="11" fill="#666">'
+            'font-family="Arial, sans-serif" font-size="14" fill="#666">'
             f"{level_value:.1f} dB</text>"
         )
     svg.append(f'<line x1="{center_x - radius:.1f}" y1="{center_y:.1f}" x2="{center_x + radius:.1f}" y2="{center_y:.1f}" stroke="#d1d5db" />')
@@ -846,7 +846,7 @@ def directivity_comparison_svg(
         svg.append(
             f'<text x="{center_x + (radius + 24) * math.cos(angle):.1f}" '
             f'y="{center_y - (radius + 24) * math.sin(angle) + 4:.1f}" '
-            'font-family="Arial, sans-serif" font-size="12" text-anchor="middle" '
+            'font-family="Arial, sans-serif" font-size="16" text-anchor="middle" '
             f'fill="#555">{angle_deg} deg</text>'
         )
     svg.append(direction_label(0, "+x / tip"))
@@ -890,23 +890,23 @@ def directivity_comparison_svg(
         svg.append(
             f'<rect x="{width - 190}" y="58" width="150" height="82" fill="#fff" stroke="#ddd" />'
             f'<line x1="{width - 172}" y1="80" x2="{width - 132}" y2="80" stroke="#d62728" stroke-width="3" />'
-            f'<text x="{width - 122}" y="84" font-family="Arial, sans-serif" font-size="13">simulated</text>'
+            f'<text x="{width - 122}" y="84" font-family="Arial, sans-serif" font-size="17">simulated</text>'
             f'<line x1="{width - 172}" y1="104" x2="{width - 132}" y2="104" stroke="#1f77b4" stroke-width="3" />'
-            f'<text x="{width - 122}" y="108" font-family="Arial, sans-serif" font-size="13">theory</text>'
+            f'<text x="{width - 122}" y="108" font-family="Arial, sans-serif" font-size="17">theory</text>'
             f'<line x1="{width - 172}" y1="128" x2="{width - 132}" y2="128" stroke="#2ca02c" stroke-width="3" stroke-dasharray="6,4" />'
-            f'<text x="{width - 122}" y="132" font-family="Arial, sans-serif" font-size="13">target shape</text>'
+            f'<text x="{width - 122}" y="132" font-family="Arial, sans-serif" font-size="17">target shape</text>'
         )
     else:
         svg.append(
             f'<rect x="{width - 190}" y="58" width="150" height="58" fill="#fff" stroke="#ddd" />'
             f'<line x1="{width - 172}" y1="80" x2="{width - 132}" y2="80" stroke="#d62728" stroke-width="3" />'
-            f'<text x="{width - 122}" y="84" font-family="Arial, sans-serif" font-size="13">simulated</text>'
+            f'<text x="{width - 122}" y="84" font-family="Arial, sans-serif" font-size="17">simulated</text>'
             f'<line x1="{width - 172}" y1="104" x2="{width - 132}" y2="104" stroke="#1f77b4" stroke-width="3" />'
-            f'<text x="{width - 122}" y="108" font-family="Arial, sans-serif" font-size="13">theory</text>'
+            f'<text x="{width - 122}" y="108" font-family="Arial, sans-serif" font-size="17">theory</text>'
         )
     svg.append(
         f'<text x="{center_x:.1f}" y="{height - 28}" font-family="Arial, sans-serif" '
-        'font-size="13" text-anchor="middle" fill="#333">'
+        'font-size="17" text-anchor="middle" fill="#333">'
         f"radial scale: {min_level:.1f} to {max_level:.1f} dB, x-z observer plane projection</text>"
     )
     svg.append("</svg>")
@@ -916,8 +916,8 @@ def directivity_comparison_svg(
 def error_heatmap_svg(
     result: ComparisonResult,
     split: str = "validation",
-    width: int = 1060,
-    height: int = 720,
+    width: int = 1431,
+    height: int = 972,
 ) -> str:
     rows = tuple(row for row in result.rows if row.split == split)
     if not rows:
@@ -935,10 +935,10 @@ def error_heatmap_svg(
         for row in rows
     }
     max_abs_error = max(abs(row.error_db) for row in rows)
-    margin_left = 132
-    margin_right = 96
-    margin_top = 86
-    margin_bottom = 106
+    margin_left = 178
+    margin_right = 129
+    margin_top = 116
+    margin_bottom = 143
     plot_width = width - margin_left - margin_right
     plot_height = height - margin_top - margin_bottom
     cell_width = plot_width / max(len(frequencies), 1)
@@ -947,7 +947,7 @@ def error_heatmap_svg(
     svg = _figure_header(width, height, f"Signed Error Heatmap - {split}")
     svg.append(
         f'<text x="{margin_left}" y="62" font-family="Arial, sans-serif" '
-        'font-size="13" fill="#444">'
+        'font-size="17" fill="#444">'
         "cell value is theory level minus simulated level in dB</text>"
     )
     for frequency_index, frequency in enumerate(frequencies):
@@ -955,7 +955,7 @@ def error_heatmap_svg(
         label_x = x + 0.5 * cell_width
         svg.append(
             f'<text x="{label_x:.1f}" y="{height - 66}" font-family="Arial, sans-serif" '
-            'font-size="12" text-anchor="end" transform="rotate(-35 '
+            'font-size="16" text-anchor="end" transform="rotate(-35 '
             f'{label_x:.1f} {height - 66})" fill="#333">'
             f"{html.escape(_format_frequency(frequency))}</text>"
         )
@@ -963,7 +963,7 @@ def error_heatmap_svg(
         y = margin_top + direction_index * cell_height
         svg.append(
             f'<text x="{margin_left - 12}" y="{y + 0.5 * cell_height + 4:.1f}" '
-            'font-family="Arial, sans-serif" font-size="12" text-anchor="end" '
+            'font-family="Arial, sans-serif" font-size="16" text-anchor="end" '
             f'fill="#333">{_angle_deg_xz(direction):.1f} deg</text>'
         )
         svg.append(
@@ -993,17 +993,17 @@ def error_heatmap_svg(
             if text:
                 svg.append(
                     f'<text x="{x + 0.5 * cell_width:.1f}" y="{y + 0.5 * cell_height + 4:.1f}" '
-                    'font-family="Arial, sans-serif" font-size="11" text-anchor="middle" '
+                    'font-family="Arial, sans-serif" font-size="14" text-anchor="middle" '
                     f'fill="#111">{html.escape(text)}</text>'
                 )
     svg.append(
         f'<text x="{margin_left - 12}" y="{margin_top - 16}" '
-        'font-family="Arial, sans-serif" font-size="13" text-anchor="end" fill="#333">'
+        'font-family="Arial, sans-serif" font-size="17" text-anchor="end" fill="#333">'
         "observer angle</text>"
     )
     svg.append(
         f'<text x="{margin_left + plot_width / 2:.1f}" y="{height - 20}" '
-        'font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">'
+        'font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#222">'
         "frequency</text>"
     )
 
@@ -1022,19 +1022,19 @@ def error_heatmap_svg(
         )
     svg.append(
         f'<text x="{legend_x + 28}" y="{legend_y + 4}" font-family="Arial, sans-serif" '
-        f'font-size="11" fill="#333">+{max_abs_error:.1f}</text>'
+        f'font-size="14" fill="#333">+{max_abs_error:.1f}</text>'
     )
     svg.append(
         f'<text x="{legend_x + 28}" y="{legend_y + legend_height / 2 + 4:.1f}" '
-        'font-family="Arial, sans-serif" font-size="11" fill="#333">0</text>'
+        'font-family="Arial, sans-serif" font-size="14" fill="#333">0</text>'
     )
     svg.append(
         f'<text x="{legend_x + 28}" y="{legend_y + legend_height:.1f}" '
-        f'font-family="Arial, sans-serif" font-size="11" fill="#333">-{max_abs_error:.1f}</text>'
+        f'font-family="Arial, sans-serif" font-size="14" fill="#333">-{max_abs_error:.1f}</text>'
     )
     svg.append(
         f'<text x="{legend_x - 4}" y="{legend_y - 12}" font-family="Arial, sans-serif" '
-        'font-size="11" text-anchor="end" fill="#333">error dB</text>'
+        'font-size="14" text-anchor="end" fill="#333">error dB</text>'
     )
     svg.append(_footer(width, height, _comparison_context(result)))
     svg.append("</svg>")

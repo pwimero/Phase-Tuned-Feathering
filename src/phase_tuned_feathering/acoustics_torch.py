@@ -67,71 +67,77 @@ def evaluate_spp_torch(
         * amplitude_factor.unsqueeze(1)
     )
     autospectra = torch.clamp(autospectra, min=0.0)  # (P, F, N)
-
-    # 2. Coherence Matrix
-    model = closures.coherence_model.lower()
-
-    delay = closures.incidence_delay_per_rad * (alpha - alpha_ref)  # (P, N)
-    if scales is None:
-        scales = torch.tensor(
-            [closures.coherence_x, closures.coherence_y, closures.coherence_z],
-            dtype=points.dtype,
-            device=device,
-        ).view(1, 1, 1, 3)
-    else:
-        scales = scales.to(device=device, dtype=points.dtype).view(1, 1, 1, 3)
-
-    diff = (points.unsqueeze(2) - points.unsqueeze(1)) / scales  # (P, N, N, 3)
-    distance = torch.sum(torch.abs(diff), dim=-1)  # (P, N, N)
-    delay_diff = delay.unsqueeze(2) - delay.unsqueeze(1)  # (P, N, N)
-
-    if model == "exponential":
-        magnitude = torch.exp(-omega.view(1, F, 1, 1) * distance.unsqueeze(1) / u_c)
-    elif model == "full":
-        magnitude = torch.ones((P, F, N, N), dtype=points.dtype, device=device)
-    elif model == "zero":
-        magnitude = torch.eye(N, dtype=points.dtype, device=device).view(1, 1, N, N).expand(P, F, N, N)
-    else:
-        raise ValueError("Invalid coherence model")
-
-    phase_diff = omega.view(1, F, 1, 1) * delay_diff.unsqueeze(1)  # (P, F, N, N)
-    gamma_real = magnitude * torch.cos(phase_diff)
-    gamma_imag = magnitude * torch.sin(phase_diff)
-
     auto_sqrt = torch.sqrt(autospectra)  # (P, F, N)
-    cross_scale = auto_sqrt.unsqueeze(3) * auto_sqrt.unsqueeze(2)
-    cq_real = cross_scale * gamma_real
-    cq_imag = cross_scale * gamma_imag
+
+    # 2. Coherence Matrix Setup (Skipped for zero-coherence fast path)
+    model = closures.coherence_model.lower()
+    
+    if model != "zero":
+        delay = closures.incidence_delay_per_rad * (alpha - alpha_ref)  # (P, N)
+        if scales is None:
+            scales = torch.tensor(
+                [closures.coherence_x, closures.coherence_y, closures.coherence_z],
+                dtype=points.dtype,
+                device=device,
+            ).view(1, 1, 1, 3)
+        else:
+            scales = scales.to(device=device, dtype=points.dtype).view(1, 1, 1, 3)
+
+        diff = (points.unsqueeze(2) - points.unsqueeze(1)) / scales  # (P, N, N, 3)
+        distance = torch.sum(torch.abs(diff), dim=-1)  # (P, N, N)
+        delay_diff = delay.unsqueeze(2) - delay.unsqueeze(1)  # (P, N, N)
+
+        if model == "exponential":
+            magnitude = torch.exp(-omega.view(1, F, 1, 1) * distance.unsqueeze(1) / u_c)
+        elif model == "full":
+            magnitude = torch.ones((P, F, N, N), dtype=points.dtype, device=device)
+        else:
+            raise ValueError("Invalid coherence model")
+
+        phase_diff = omega.view(1, F, 1, 1) * delay_diff.unsqueeze(1)  # (P, F, N, N)
+        gamma_real = magnitude * torch.cos(phase_diff)
+        gamma_imag = magnitude * torch.sin(phase_diff)
 
     # 3. Transfer Weights for each observer
     mach = flow.u_inf / flow.c0
     denominator = torch.clamp((1.0 - mach * observer_dirs[:, 0]) ** 2, min=1.0e-12)
     kernel = (omega.view(F, 1) / flow.c0) / denominator.view(1, O)  # (F, O)
 
-    loading_proj = torch.einsum("pni,oi->pno", loading_directions, observer_dirs)
-    point_proj = torch.einsum("pni,oi->pno", points, observer_dirs)
+    # Use hardware-accelerated batch matrix multiplication
+    loading_proj = loading_directions @ observer_dirs.T  # (P, N, O)
+    point_proj = points @ observer_dirs.T  # (P, N, O)
     wave_number = omega.view(F, 1, 1) / flow.c0
     phase = wave_number.unsqueeze(0) * point_proj.unsqueeze(1)  # (P, F, N, O)
 
+    # Pre-combine chords and quadrature weights in 2D space before unsqueezing
+    chords_weights = (chords * quad_weights).unsqueeze(1).unsqueeze(-1)  # (P, 1, N, 1)
     magnitude_w = (
         kernel.unsqueeze(0).unsqueeze(2)
-        * chords.unsqueeze(1).unsqueeze(-1)
+        * chords_weights
         * loading_proj.unsqueeze(1)
-        * quad_weights.unsqueeze(1).unsqueeze(-1)
     )
     w_real = magnitude_w * torch.cos(phase)
     w_imag = magnitude_w * torch.sin(phase)
 
-    # 4. Quadratic Form Spp = Re[w^H Cq w] in explicit real/imag form.
-    cq_w_real = (
-        torch.einsum("pfnm,pfmo->pfno", cq_real, w_real)
-        - torch.einsum("pfnm,pfmo->pfno", cq_imag, w_imag)
-    )
-    cq_w_imag = (
-        torch.einsum("pfnm,pfmo->pfno", cq_real, w_imag)
-        + torch.einsum("pfnm,pfmo->pfno", cq_imag, w_real)
-    )
-    spp_real = torch.sum(w_real * cq_w_real + w_imag * cq_w_imag, dim=2)
+    # 4. Quadratic Form Spp = Re[w^H Cq w]
+    # Mathematically exact tensor scaling refactoring (scales w directly by auto_sqrt)
+    w_scaled_real = w_real * auto_sqrt.unsqueeze(-1)
+    w_scaled_imag = w_imag * auto_sqrt.unsqueeze(-1)
+
+    if model == "zero":
+        # Fast path: Bypasses all (P, F, N, N) allocations and matrix multiplications
+        spp_real = torch.sum(w_scaled_real * w_scaled_real + w_scaled_imag * w_scaled_imag, dim=2)
+    else:
+        # Use hardware-accelerated batched torch.matmul
+        cq_w_real = (
+            torch.matmul(gamma_real, w_scaled_real)
+            - torch.matmul(gamma_imag, w_scaled_imag)
+        )
+        cq_w_imag = (
+            torch.matmul(gamma_real, w_scaled_imag)
+            + torch.matmul(gamma_imag, w_scaled_real)
+        )
+        spp_real = torch.sum(w_scaled_real * cq_w_real + w_scaled_imag * cq_w_imag, dim=2)
 
     radius = max(flow.observer_radius, 1.0e-12)
     factor = 1.0 / ((4.0 * math.pi * radius) ** 2)
