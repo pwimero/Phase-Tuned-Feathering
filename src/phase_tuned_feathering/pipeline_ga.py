@@ -19,14 +19,21 @@ from pathlib import Path
 import json
 
 from .closures import ClosureParams, FlowConfig
+from .acoustics import evaluate_spp
 from .ga_optimization import GAConfig, run_optimization_torch
+from .geometry import default_geometry, source_grid
 from .io import write_geometry_metadata_json, write_source_grid_csv
 from .observers import ObserverGrid
-from .simulation import SurrogateNoiseConfig, write_surrogate_simulation_csv
+from .simulation import (
+    SurrogateNoiseConfig,
+    local_aero_states,
+    write_surrogate_simulation_csv,
+)
 from .validation import (
     compare_theory_to_simulation,
     comparison_summary_text,
     load_simulation_csv,
+    spectral_level_db,
     write_comparison_csv,
     write_summary_json,
 )
@@ -132,6 +139,254 @@ def _target_fn_from_pattern(
     return _lookup
 
 
+def _shape_fit_metrics(rows, split: str = "validation") -> dict[str, float]:
+    subset = [row for row in rows if row.split == split and row.target_level_db is not None]
+    if not subset:
+        subset = [row for row in rows if row.target_level_db is not None]
+    if not subset:
+        return {}
+
+    frequencies = sorted({row.frequency_hz for row in subset})
+    surrogate_rmses: list[float] = []
+    theory_rmses: list[float] = []
+    surrogate_maes: list[float] = []
+    theory_maes: list[float] = []
+    surrogate_peak_angle_errors: list[float] = []
+    theory_peak_angle_errors: list[float] = []
+
+    for frequency_hz in frequencies:
+        freq_rows = [row for row in subset if row.frequency_hz == frequency_hz]
+        if len(freq_rows) < 2:
+            continue
+        target_levels = [float(row.target_level_db) for row in freq_rows if row.target_level_db is not None]
+        if not target_levels:
+            continue
+        target_peak = max(target_levels)
+        sim_peak = max(row.simulated_level_db for row in freq_rows)
+        theory_peak = max(row.theory_level_db for row in freq_rows)
+        sim_errors = [
+            (row.simulated_level_db - sim_peak) - (float(row.target_level_db) - target_peak)
+            for row in freq_rows
+        ]
+        theory_errors = [
+            (row.theory_level_db - theory_peak) - (float(row.target_level_db) - target_peak)
+            for row in freq_rows
+        ]
+        surrogate_rmses.append(math.sqrt(sum(value * value for value in sim_errors) / len(sim_errors)))
+        theory_rmses.append(math.sqrt(sum(value * value for value in theory_errors) / len(theory_errors)))
+        surrogate_maes.append(sum(abs(value) for value in sim_errors) / len(sim_errors))
+        theory_maes.append(sum(abs(value) for value in theory_errors) / len(theory_errors))
+
+        target_peak_row = max(freq_rows, key=lambda row: float(row.target_level_db))
+        sim_peak_row = max(freq_rows, key=lambda row: row.simulated_level_db)
+        theory_peak_row = max(freq_rows, key=lambda row: row.theory_level_db)
+        surrogate_peak_angle_errors.append(
+            math.degrees(
+                math.acos(
+                    max(
+                        min(
+                            sum(
+                                target_peak_row.direction[index] * sim_peak_row.direction[index]
+                                for index in range(3)
+                            ),
+                            1.0,
+                        ),
+                        -1.0,
+                    )
+                )
+            )
+        )
+        theory_peak_angle_errors.append(
+            math.degrees(
+                math.acos(
+                    max(
+                        min(
+                            sum(
+                                target_peak_row.direction[index] * theory_peak_row.direction[index]
+                                for index in range(3)
+                            ),
+                            1.0,
+                        ),
+                        -1.0,
+                    )
+                )
+            )
+        )
+
+    return {
+        "surrogate_target_rmse_db": sum(surrogate_rmses) / len(surrogate_rmses),
+        "surrogate_target_mae_db": sum(surrogate_maes) / len(surrogate_maes),
+        "theory_target_rmse_db": sum(theory_rmses) / len(theory_rmses),
+        "theory_target_mae_db": sum(theory_maes) / len(theory_maes),
+        "surrogate_peak_angle_error_deg": sum(surrogate_peak_angle_errors) / len(surrogate_peak_angle_errors),
+        "theory_peak_angle_error_deg": sum(theory_peak_angle_errors) / len(theory_peak_angle_errors),
+    }
+
+
+def _geometry_mutation_metrics(base_params, optimized_params) -> dict[str, float]:
+    base_inc = base_params.incidence_angles_deg()
+    opt_inc = optimized_params.incidence_angles_deg()
+    inc_rms = math.sqrt(
+        sum((opt_inc[index] - base_inc[index]) ** 2 for index in range(len(base_inc))) / len(base_inc)
+    )
+    root_z_rms = math.sqrt(
+        (
+            (optimized_params.wing_1_root_z_translation - base_params.wing_1_root_z_translation) ** 2
+            + (optimized_params.wing_7_root_z_translation - base_params.wing_7_root_z_translation) ** 2
+            + (
+                (
+                    (optimized_params.mid_wing_root_z_translation if optimized_params.mid_wing_root_z_translation is not None else 0.5 * (optimized_params.wing_1_root_z_translation + optimized_params.wing_7_root_z_translation))
+                    - 0.5 * (base_params.wing_1_root_z_translation + base_params.wing_7_root_z_translation)
+                ) ** 2
+            )
+        ) / 3.0
+    )
+    sweep_rms = math.sqrt(
+        (
+            (optimized_params.wing_1_tip_sweep - base_params.wing_1_tip_sweep) ** 2
+            + (optimized_params.wing_7_tip_sweep - base_params.wing_7_tip_sweep) ** 2
+            + (
+                (
+                    (optimized_params.mid_wing_tip_sweep if optimized_params.mid_wing_tip_sweep is not None else 0.5 * (optimized_params.wing_1_tip_sweep + optimized_params.wing_7_tip_sweep))
+                    - 0.5 * (base_params.wing_1_tip_sweep + base_params.wing_7_tip_sweep)
+                ) ** 2
+            )
+        ) / 3.0
+    )
+    tip_z_rms = math.sqrt(
+        (
+            (optimized_params.wing_1_tip_z_curve - base_params.wing_1_tip_z_curve) ** 2
+            + (optimized_params.wing_7_tip_z_curve - base_params.wing_7_tip_z_curve) ** 2
+            + (
+                (
+                    (optimized_params.mid_wing_tip_z_curve if optimized_params.mid_wing_tip_z_curve is not None else 0.5 * (optimized_params.wing_1_tip_z_curve + optimized_params.wing_7_tip_z_curve))
+                    - 0.5 * (base_params.wing_1_tip_z_curve + base_params.wing_7_tip_z_curve)
+                ) ** 2
+            )
+        ) / 3.0
+    )
+    return {
+        "incidence_rms_change_deg": inc_rms,
+        "root_z_rms_change_m": root_z_rms,
+        "tip_sweep_rms_change_m": sweep_rms,
+        "tip_z_rms_change_m": tip_z_rms,
+        "spacing_scale_change": optimized_params.y_spacing_scale - base_params.y_spacing_scale,
+        "tip_chord_scale_change": optimized_params.min_tip_chord_scale - base_params.min_tip_chord_scale,
+        "mutation_magnitude_index": math.sqrt(
+            inc_rms * inc_rms
+            + (25.0 * root_z_rms) ** 2
+            + (25.0 * sweep_rms) ** 2
+            + (25.0 * tip_z_rms) ** 2
+            + (4.0 * (optimized_params.y_spacing_scale - base_params.y_spacing_scale)) ** 2
+            + (10.0 * (optimized_params.min_tip_chord_scale - base_params.min_tip_chord_scale)) ** 2
+        ),
+    }
+
+
+def _theory_target_metrics(
+    params,
+    observers: ObserverGrid,
+    frequencies_hz: tuple[float, ...],
+    flow: FlowConfig,
+    closures: ClosureParams,
+    n_eta: int,
+    target_fn,
+) -> dict[str, float]:
+    grid = source_grid(params, n_eta=n_eta)
+    spectral = evaluate_spp(
+        grid,
+        observers=observers,
+        frequencies_hz=frequencies_hz,
+        flow=flow,
+        closures=closures,
+    )
+
+    target_peak_errors: list[float] = []
+    rmses: list[float] = []
+    maes: list[float] = []
+    target_levels_by_frequency: list[list[float]] = []
+    theory_levels_by_frequency: list[list[float]] = []
+
+    for frequency_index, _frequency_hz in enumerate(frequencies_hz):
+        target_levels = [float(target_fn(direction)) for direction in observers.directions]
+        theory_levels = [
+            spectral_level_db(spectral.value(frequency_index, observer_index), flow)
+            for observer_index in range(len(observers.directions))
+        ]
+        target_peak = max(target_levels)
+        theory_peak = max(theory_levels)
+        errors = [
+            (theory_level - theory_peak) - (target_level - target_peak)
+            for theory_level, target_level in zip(theory_levels, target_levels)
+        ]
+        rmses.append(math.sqrt(sum(value * value for value in errors) / len(errors)))
+        maes.append(sum(abs(value) for value in errors) / len(errors))
+        target_peak_index = max(range(len(target_levels)), key=lambda index: target_levels[index])
+        theory_peak_index = max(range(len(theory_levels)), key=lambda index: theory_levels[index])
+        dot = sum(
+            observers.directions[target_peak_index][axis] * observers.directions[theory_peak_index][axis]
+            for axis in range(3)
+        )
+        target_peak_errors.append(math.degrees(math.acos(max(min(dot, 1.0), -1.0))))
+        target_levels_by_frequency.append(target_levels)
+        theory_levels_by_frequency.append(theory_levels)
+
+    return {
+        "theory_target_rmse_db": sum(rmses) / len(rmses),
+        "theory_target_mae_db": sum(maes) / len(maes),
+        "theory_peak_angle_error_deg": sum(target_peak_errors) / len(target_peak_errors),
+    }
+
+
+def _aero_proxy_metrics(
+    params,
+    flow: FlowConfig,
+    config: SurrogateNoiseConfig,
+    n_eta: int,
+) -> dict[str, float]:
+    grid = source_grid(params, n_eta=n_eta)
+    states = local_aero_states(grid, flow, config)
+    dynamic_pressure = 0.5 * flow.rho0 * flow.u_inf * flow.u_inf
+
+    lift_total = 0.0
+    drag_total = 0.0
+    weighted_separation = 0.0
+    weighted_incidence = 0.0
+    total_area_weight = 0.0
+    feather_lift: dict[int, float] = {}
+
+    for state in states:
+        area_weight = state.chord_m * state.segment_length_m
+        lift = dynamic_pressure * state.cl * area_weight
+        drag = dynamic_pressure * state.cd * area_weight
+        lift_total += lift
+        drag_total += drag
+        weighted_separation += state.separation_factor * area_weight
+        weighted_incidence += abs(state.incidence_deg) * area_weight
+        total_area_weight += area_weight
+        feather_lift[state.feather_id] = feather_lift.get(state.feather_id, 0.0) + lift
+
+    feather_lift_values = tuple(feather_lift[feather_id] for feather_id in sorted(feather_lift))
+    mean_feather_lift = sum(feather_lift_values) / max(len(feather_lift_values), 1)
+    spanwise_lift_std = math.sqrt(
+        sum((value - mean_feather_lift) ** 2 for value in feather_lift_values)
+        / max(len(feather_lift_values), 1)
+    )
+    spanwise_lift_cv = spanwise_lift_std / max(abs(mean_feather_lift), 1.0e-12)
+
+    return {
+        "lift_proxy": lift_total,
+        "drag_proxy": drag_total,
+        "lift_to_drag_proxy": lift_total / max(drag_total, 1.0e-12),
+        "separation_burden": weighted_separation / max(total_area_weight, 1.0e-12),
+        "mean_abs_incidence_deg": weighted_incidence / max(total_area_weight, 1.0e-12),
+        "spanwise_lift_cv": spanwise_lift_cv,
+        "lift_proxy_per_area": lift_total / max(total_area_weight, 1.0e-12),
+        "drag_proxy_per_area": drag_total / max(total_area_weight, 1.0e-12),
+        "reference_area_proxy": total_area_weight,
+    }
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -154,13 +409,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--maxiter",
         type=int,
-        default=30,
-        help="Maximum generations for the GA.",
+        default=0,
+        help="Optional hard cap on generations. Use 0 for patience-based stopping only.",
     )
     parser.add_argument(
         "--n-eta",
         type=int,
-        default=48,
+        default=16,
         help="Integration points per feather.",
     )
     parser.add_argument(
@@ -180,7 +435,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate an arbitrary target
-    observers = ObserverGrid.spherical(10, 16)
+    observers = ObserverGrid.spherical(8, 10)
     target_pattern_db, target_meta = generate_arbitrary_target(observers, seed=args.seed)
     target_fn = _target_fn_from_pattern(observers, target_pattern_db)
 
@@ -190,6 +445,9 @@ def run_pipeline(args: argparse.Namespace) -> None:
     print(f" Target: {target_meta['n_lobes']} random lobe(s), seed={args.seed}")
     print(f" Observer grid: {len(observers.directions)} directions")
     print(f"========================================================\n")
+
+    validation_frequencies_hz = (250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0)
+    validation_observers = ObserverGrid.spherical(12, 24)
 
     # Save the target definition
     with open(output_dir / "target_definition.json", "w") as f:
@@ -201,14 +459,17 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
     config = GAConfig(
         target_pattern_db=target_pattern_db,
+        observers=observers,
         popsize=args.popsize,
         maxiter=args.maxiter,
+        n_eta=args.n_eta,
         flow=flow,
         closures=closures,
     )
 
     best_geometry, best_score, success = run_optimization_torch(config)
     optimized_params = best_geometry
+    base_params = default_geometry()
 
     # Save metadata
     write_geometry_metadata_json(output_dir / "optimized_geometry.json", optimized_params)
@@ -218,6 +479,17 @@ def run_pipeline(args: argparse.Namespace) -> None:
         "score_mse_db2": best_score,
         "target_seed": args.seed,
         "target_lobes": target_meta["n_lobes"],
+        "incidence_parameterization": "orthonormal_cosine_shape_coefficients",
+        "popsize": args.popsize,
+        "maxiter": args.maxiter,
+        "n_eta": args.n_eta,
+        "ga_observer_count": len(observers.directions),
+        "ga_frequencies_hz": list(config.frequencies_hz),
+        "coarse_n_eta": config.coarse_n_eta,
+        "coarse_observer_stride": config.coarse_observer_stride,
+        "coarse_frequency_stride": config.coarse_frequency_stride,
+        "refinement_top_fraction": config.refinement_top_fraction,
+        "refinement_min_candidates": config.refinement_min_candidates,
     }
     with open(output_dir / "ga_stats.json", "w") as f:
         json.dump(ga_stats, f, indent=2)
@@ -245,9 +517,8 @@ def run_pipeline(args: argparse.Namespace) -> None:
         flow=flow,
         config=SurrogateNoiseConfig(),
         n_eta=args.n_eta,
-        # Use high resolution validation metrics
-        frequencies_hz=(250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0),
-        observers=ObserverGrid.spherical(12, 24),
+        frequencies_hz=validation_frequencies_hz,
+        observers=validation_observers,
     )
 
     simulation = load_simulation_csv(simulation_path)
@@ -270,9 +541,96 @@ def run_pipeline(args: argparse.Namespace) -> None:
     )
     figure_paths = write_validation_figures(output_dir, comparison)
 
+    baseline_target_fit = _theory_target_metrics(
+        base_params,
+        observers=validation_observers,
+        frequencies_hz=validation_frequencies_hz,
+        flow=flow,
+        closures=closures,
+        n_eta=args.n_eta,
+        target_fn=target_fn,
+    )
+    optimized_theory_target_fit = _theory_target_metrics(
+        optimized_params,
+        observers=validation_observers,
+        frequencies_hz=validation_frequencies_hz,
+        flow=flow,
+        closures=closures,
+        n_eta=args.n_eta,
+        target_fn=target_fn,
+    )
+    validated_target_fit = _shape_fit_metrics(comparison.rows, split="validation")
+    mutation_metrics = _geometry_mutation_metrics(base_params, optimized_params)
+    surrogate_config = SurrogateNoiseConfig()
+    baseline_aero = _aero_proxy_metrics(
+        base_params,
+        flow=flow,
+        config=surrogate_config,
+        n_eta=args.n_eta,
+    )
+    optimized_aero = _aero_proxy_metrics(
+        optimized_params,
+        flow=flow,
+        config=surrogate_config,
+        n_eta=args.n_eta,
+    )
+    target_fit_summary = {
+        "baseline_theory": baseline_target_fit,
+        "optimized_theory": optimized_theory_target_fit,
+        "validated_surrogate": {
+            key: value
+            for key, value in validated_target_fit.items()
+            if key.startswith("surrogate_")
+        },
+        "validated_theory": {
+            key: value
+            for key, value in validated_target_fit.items()
+            if key.startswith("theory_")
+        },
+        "baseline_aero": baseline_aero,
+        "optimized_aero": optimized_aero,
+        "relative_aero": {
+            "lift_retention": optimized_aero["lift_proxy"] / max(baseline_aero["lift_proxy"], 1.0e-12),
+            "drag_ratio": optimized_aero["drag_proxy"] / max(baseline_aero["drag_proxy"], 1.0e-12),
+            "lift_to_drag_retention": optimized_aero["lift_to_drag_proxy"] / max(baseline_aero["lift_to_drag_proxy"], 1.0e-12),
+            "separation_ratio": optimized_aero["separation_burden"] / max(baseline_aero["separation_burden"], 1.0e-12),
+            "separation_delta": optimized_aero["separation_burden"] - baseline_aero["separation_burden"],
+            "spanwise_lift_cv_change": optimized_aero["spanwise_lift_cv"] - baseline_aero["spanwise_lift_cv"],
+        },
+        "improvement": {
+            "theory_target_rmse_db": baseline_target_fit["theory_target_rmse_db"]
+            - optimized_theory_target_fit["theory_target_rmse_db"],
+            "theory_target_mae_db": baseline_target_fit["theory_target_mae_db"]
+            - optimized_theory_target_fit["theory_target_mae_db"],
+            "surrogate_target_rmse_db": baseline_target_fit["theory_target_rmse_db"]
+            - validated_target_fit["surrogate_target_rmse_db"],
+            "surrogate_target_mae_db": baseline_target_fit["theory_target_mae_db"]
+            - validated_target_fit["surrogate_target_mae_db"],
+            "theory_peak_angle_error_deg": baseline_target_fit["theory_peak_angle_error_deg"]
+            - optimized_theory_target_fit["theory_peak_angle_error_deg"],
+            "surrogate_peak_angle_error_deg": baseline_target_fit["theory_peak_angle_error_deg"]
+            - validated_target_fit["surrogate_peak_angle_error_deg"],
+            "rmse_improvement_per_mutation_index": (
+                (baseline_target_fit["theory_target_rmse_db"] - validated_target_fit["surrogate_target_rmse_db"])
+                / max(mutation_metrics["mutation_magnitude_index"], 1.0e-9)
+            ),
+            "rmse_improvement_per_drag_ratio": (
+                (baseline_target_fit["theory_target_rmse_db"] - validated_target_fit["surrogate_target_rmse_db"])
+                / max(
+                    optimized_aero["drag_proxy"] / max(baseline_aero["drag_proxy"], 1.0e-12),
+                    1.0e-9,
+                )
+            ),
+        },
+        "mutation": mutation_metrics,
+    }
+    with open(output_dir / "target_fit_summary.json", "w") as f:
+        json.dump(target_fit_summary, f, indent=2)
+
     print("\nValidation comparison complete.")
     print(f"Optimal Geometry JSON: {output_dir / 'optimized_geometry.json'}")
     print(f"Simulation CSV: {simulation_path}")
+    print(f"Target-fit summary: {output_dir / 'target_fit_summary.json'}")
     print("Geometry renders generated.")
     print("Validation figures generated.")
     print(comparison_summary_text(comparison.summary))

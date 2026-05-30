@@ -40,6 +40,22 @@ def _unit(vector: tuple[float, float, float]) -> tuple[float, float, float]:
     return tuple(component / length for component in vector)  # type: ignore[return-value]
 
 
+def _mid_value(value: float | None, left: float, right: float) -> float:
+    return 0.5 * (left + right) if value is None else float(value)
+
+
+def _quadratic_profile(progress: float, left: float, middle: float, right: float) -> float:
+    if progress < 0.0 or progress > 1.0:
+        raise ValueError("progress must stay in [0, 1].")
+    t0 = 0.0
+    t1 = 0.5
+    t2 = 1.0
+    l0 = ((progress - t1) * (progress - t2)) / ((t0 - t1) * (t0 - t2))
+    l1 = ((progress - t0) * (progress - t2)) / ((t1 - t0) * (t1 - t2))
+    l2 = ((progress - t0) * (progress - t1)) / ((t2 - t0) * (t2 - t1))
+    return left * l0 + middle * l1 + right * l2
+
+
 @dataclass(frozen=True)
 class WingGeometryParams:
     """Parametric feathered half-wing geometry in SI units."""
@@ -52,6 +68,7 @@ class WingGeometryParams:
     additional_wings: int = 6
     mid_wing_span_scale: float = 2.0
     wing_1_tip_sweep: float = -0.55
+    mid_wing_tip_sweep: float | None = None
     wing_7_tip_sweep: float = 0.20
     sweep_section_fractions: tuple[float, ...] = (
         0.0,
@@ -66,8 +83,10 @@ class WingGeometryParams:
     )
     sweep_curve_exponent: float = 2.5
     wing_1_root_z_translation: float = 0.12
+    mid_wing_root_z_translation: float | None = None
     wing_7_root_z_translation: float = -0.12
     wing_1_tip_z_curve: float = 0.50
+    mid_wing_tip_z_curve: float | None = None
     wing_7_tip_z_curve: float = -0.20
     z_curve_exponent: float = 2.5
     thickness_ratio: float = 0.12
@@ -280,37 +299,66 @@ def tip_sweep_offset(params: WingGeometryParams, feather_index: int) -> float:
     validate_geometry(params)
     total = params.total_wings
     if total == 1:
-        return 0.0
-    midpoint = (total + 1) / 2.0
-    if feather_index <= midpoint:
-        progress = (midpoint - feather_index) / max(midpoint - 1.0, 1.0)
-        return params.wing_1_tip_sweep * progress
-    progress = (feather_index - midpoint) / max(total - midpoint, 1.0)
-    return params.wing_7_tip_sweep * progress
+        return _mid_value(
+            params.mid_wing_tip_sweep,
+            params.wing_1_tip_sweep,
+            params.wing_7_tip_sweep,
+        )
+    progress = (feather_index - 1) / max(total - 1, 1)
+    return _quadratic_profile(
+        progress,
+        params.wing_1_tip_sweep,
+        _mid_value(
+            params.mid_wing_tip_sweep,
+            params.wing_1_tip_sweep,
+            params.wing_7_tip_sweep,
+        ),
+        params.wing_7_tip_sweep,
+    )
 
 
 def tip_z_curve_offset(params: WingGeometryParams, feather_index: int) -> float:
     validate_geometry(params)
     total = params.total_wings
     if total == 1:
-        return 0.0
-    midpoint = (total + 1) / 2.0
-    if feather_index <= midpoint:
-        progress = (midpoint - feather_index) / max(midpoint - 1.0, 1.0)
-        return params.wing_1_tip_z_curve * progress
-    progress = (feather_index - midpoint) / max(total - midpoint, 1.0)
-    return params.wing_7_tip_z_curve * progress
+        return _mid_value(
+            params.mid_wing_tip_z_curve,
+            params.wing_1_tip_z_curve,
+            params.wing_7_tip_z_curve,
+        )
+    progress = (feather_index - 1) / max(total - 1, 1)
+    return _quadratic_profile(
+        progress,
+        params.wing_1_tip_z_curve,
+        _mid_value(
+            params.mid_wing_tip_z_curve,
+            params.wing_1_tip_z_curve,
+            params.wing_7_tip_z_curve,
+        ),
+        params.wing_7_tip_z_curve,
+    )
 
 
 def root_z_translation(params: WingGeometryParams, feather_index: int) -> float:
     validate_geometry(params)
     total = params.total_wings
     if total == 1:
-        return 0.0
+        return _mid_value(
+            params.mid_wing_root_z_translation,
+            params.wing_1_root_z_translation,
+            params.wing_7_root_z_translation,
+        )
     progress = (feather_index - 1) / max(total - 1, 1)
-    return params.wing_1_root_z_translation + (
-        params.wing_7_root_z_translation - params.wing_1_root_z_translation
-    ) * progress
+    return _quadratic_profile(
+        progress,
+        params.wing_1_root_z_translation,
+        _mid_value(
+            params.mid_wing_root_z_translation,
+            params.wing_1_root_z_translation,
+            params.wing_7_root_z_translation,
+        ),
+        params.wing_7_root_z_translation,
+    )
 
 
 def curved_sweep_offset(
@@ -551,12 +599,33 @@ def fusion_parameter_values(params: WingGeometryParams | None = None) -> dict[st
         "ADDITIONAL_WINGS": params.additional_wings,
         "MID_WING_SPAN_SCALE": params.mid_wing_span_scale,
         "WING_1_TIP_SWEEP": meters_to_cm(params.wing_1_tip_sweep),
+        "MID_WING_TIP_SWEEP": meters_to_cm(
+            _mid_value(
+                params.mid_wing_tip_sweep,
+                params.wing_1_tip_sweep,
+                params.wing_7_tip_sweep,
+            )
+        ),
         "WING_7_TIP_SWEEP": meters_to_cm(params.wing_7_tip_sweep),
         "SWEEP_SECTION_FRACTIONS": params.sweep_section_fractions,
         "SWEEP_CURVE_EXPONENT": params.sweep_curve_exponent,
         "WING_1_ROOT_Z_TRANSLATION": meters_to_cm(params.wing_1_root_z_translation),
+        "MID_WING_ROOT_Z_TRANSLATION": meters_to_cm(
+            _mid_value(
+                params.mid_wing_root_z_translation,
+                params.wing_1_root_z_translation,
+                params.wing_7_root_z_translation,
+            )
+        ),
         "WING_7_ROOT_Z_TRANSLATION": meters_to_cm(params.wing_7_root_z_translation),
         "WING_1_TIP_Z_CURVE": meters_to_cm(params.wing_1_tip_z_curve),
+        "MID_WING_TIP_Z_CURVE": meters_to_cm(
+            _mid_value(
+                params.mid_wing_tip_z_curve,
+                params.wing_1_tip_z_curve,
+                params.wing_7_tip_z_curve,
+            )
+        ),
         "WING_7_TIP_Z_CURVE": meters_to_cm(params.wing_7_tip_z_curve),
         "Z_CURVE_EXPONENT": params.z_curve_exponent,
         "THICKNESS_RATIO": params.thickness_ratio,

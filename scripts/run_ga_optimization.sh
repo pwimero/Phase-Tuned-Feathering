@@ -7,10 +7,10 @@ cd "$ROOT_DIR"
 export PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}"
 
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/optimization}"
-POPSIZE="${POPSIZE:-100}"
-MAXITER="${MAXITER:-100}"
-N_ETA="${N_ETA:-60}"
-N_TARGETS="${N_TARGETS:-10}"
+POPSIZE="${POPSIZE:-15}"
+MAXITER="${MAXITER:-0}"
+N_ETA="${N_ETA:-16}"
+N_TARGETS="${N_TARGETS:-100}"
 START_SEED="${START_SEED:-1}"
 
 SECONDS=0
@@ -20,7 +20,7 @@ END_SEED=$((START_SEED + N_TARGETS - 1))
 echo ""
 echo " GENERALIZED DIRECTIVITY CAMPAIGN"
 echo " Targets: $N_TARGETS | Seeds: ${START_SEED}-${END_SEED}"
-echo " Pop: $POPSIZE | MaxIter: $MAXITER | N_eta: $N_ETA"
+echo " Pop: $POPSIZE | MaxIter: ${MAXITER:-0} | N_eta: $N_ETA"
 
 for i in $(seq 1 "$N_TARGETS"); do
   SEED=$((START_SEED + i - 1))

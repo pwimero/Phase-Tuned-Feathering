@@ -800,6 +800,20 @@ def directivity_comparison_svg(
             center_y - local_radius * math.sin(angle),
         )
 
+    def direction_label(
+        angle_deg: float,
+        text: str,
+        offset: float = 56.0,
+    ) -> str:
+        angle = math.radians(angle_deg)
+        return (
+            f'<text x="{center_x + (radius + offset) * math.cos(angle):.1f}" '
+            f'y="{center_y - (radius + offset) * math.sin(angle) + 5:.1f}" '
+            'font-family="Arial, sans-serif" font-size="13" font-weight="600" '
+            'text-anchor="middle" fill="#222">'
+            f"{html.escape(text)}</text>"
+        )
+
     svg = _figure_header(width, height, f"Directivity Comparison - {split}, {frequency_hz:g} Hz")
     for fraction in (0.25, 0.5, 0.75, 1.0):
         svg.append(
@@ -835,6 +849,10 @@ def directivity_comparison_svg(
             'font-family="Arial, sans-serif" font-size="12" text-anchor="middle" '
             f'fill="#555">{angle_deg} deg</text>'
         )
+    svg.append(direction_label(0, "+x / tip"))
+    svg.append(direction_label(180, "-x / root"))
+    svg.append(direction_label(90, "+z / up"))
+    svg.append(direction_label(-90, "-z / down"))
     sim_points = [polar_point(row, row.simulated_level_db) for row in rows]
     theory_points = [polar_point(row, row.theory_level_db) for row in rows]
     if len(sim_points) > 1:

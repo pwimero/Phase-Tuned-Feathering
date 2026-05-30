@@ -1,17 +1,20 @@
 """Campaign aggregation for the Generalized Directivity Solver.
 
 Reads all target_xxx/ subdirectories produced by the campaign loop,
-collects GA statistics and target definitions, and produces:
-  - campaign_summary.csv   (one row per target)
-  - campaign_mse_chart.svg (bar chart of MSE across all targets)
-  - campaign_grid.svg      (small-multiple directivity polar plots)
+collects GA statistics and target-fit summaries, and produces:
+  - campaign_summary.csv
+  - campaign_mse_chart.svg
+  - campaign_target_fit_chart.svg
+  - campaign_mutation_effectiveness.svg
+  - campaign_aero_tradeoff.svg
+  - campaign_aero_retention_chart.svg
+  - campaign_directivity_grid.svg
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import html
 import json
 import math
 from pathlib import Path
@@ -46,6 +49,21 @@ def _collect_targets(campaign_dir: Path) -> list[dict]:
             with open(val_path) as f:
                 val_summary = json.load(f)
 
+        fit_path = target_dir / "target_fit_summary.json"
+        fit_summary = {}
+        if fit_path.exists():
+            with open(fit_path) as f:
+                fit_summary = json.load(f)
+
+        baseline_theory = fit_summary.get("baseline_theory", {})
+        optimized_theory = fit_summary.get("optimized_theory", {})
+        validated_surrogate = fit_summary.get("validated_surrogate", {})
+        baseline_aero = fit_summary.get("baseline_aero", {})
+        optimized_aero = fit_summary.get("optimized_aero", {})
+        relative_aero = fit_summary.get("relative_aero", {})
+        improvement = fit_summary.get("improvement", {})
+        mutation = fit_summary.get("mutation", {})
+
         results.append({
             "folder": target_dir.name,
             "seed": target_meta.get("seed"),
@@ -55,6 +73,44 @@ def _collect_targets(campaign_dir: Path) -> list[dict]:
             "rmse_db": val_summary.get("all", {}).get("rmse_db"),
             "mae_db": val_summary.get("all", {}).get("mae_db"),
             "bias_db": val_summary.get("all", {}).get("bias_db"),
+            "baseline_theory_target_rmse_db": baseline_theory.get("theory_target_rmse_db"),
+            "optimized_theory_target_rmse_db": optimized_theory.get("theory_target_rmse_db"),
+            "validated_surrogate_target_rmse_db": validated_surrogate.get("surrogate_target_rmse_db"),
+            "baseline_theory_target_mae_db": baseline_theory.get("theory_target_mae_db"),
+            "optimized_theory_target_mae_db": optimized_theory.get("theory_target_mae_db"),
+            "validated_surrogate_target_mae_db": validated_surrogate.get("surrogate_target_mae_db"),
+            "baseline_peak_angle_error_deg": baseline_theory.get("theory_peak_angle_error_deg"),
+            "optimized_theory_peak_angle_error_deg": optimized_theory.get("theory_peak_angle_error_deg"),
+            "validated_surrogate_peak_angle_error_deg": validated_surrogate.get("surrogate_peak_angle_error_deg"),
+            "baseline_lift_proxy": baseline_aero.get("lift_proxy"),
+            "baseline_drag_proxy": baseline_aero.get("drag_proxy"),
+            "baseline_lift_to_drag_proxy": baseline_aero.get("lift_to_drag_proxy"),
+            "baseline_separation_burden": baseline_aero.get("separation_burden"),
+            "optimized_lift_proxy": optimized_aero.get("lift_proxy"),
+            "optimized_drag_proxy": optimized_aero.get("drag_proxy"),
+            "optimized_lift_to_drag_proxy": optimized_aero.get("lift_to_drag_proxy"),
+            "optimized_separation_burden": optimized_aero.get("separation_burden"),
+            "optimized_mean_abs_incidence_deg": optimized_aero.get("mean_abs_incidence_deg"),
+            "optimized_spanwise_lift_cv": optimized_aero.get("spanwise_lift_cv"),
+            "lift_retention": relative_aero.get("lift_retention"),
+            "drag_ratio": relative_aero.get("drag_ratio"),
+            "lift_to_drag_retention": relative_aero.get("lift_to_drag_retention"),
+            "separation_ratio": relative_aero.get("separation_ratio"),
+            "separation_delta": relative_aero.get("separation_delta"),
+            "spanwise_lift_cv_change": relative_aero.get("spanwise_lift_cv_change"),
+            "theory_target_rmse_improvement_db": improvement.get("theory_target_rmse_db"),
+            "surrogate_target_rmse_improvement_db": improvement.get("surrogate_target_rmse_db"),
+            "theory_target_mae_improvement_db": improvement.get("theory_target_mae_db"),
+            "surrogate_target_mae_improvement_db": improvement.get("surrogate_target_mae_db"),
+            "mutation_magnitude_index": mutation.get("mutation_magnitude_index"),
+            "incidence_rms_change_deg": mutation.get("incidence_rms_change_deg"),
+            "root_z_rms_change_m": mutation.get("root_z_rms_change_m"),
+            "tip_sweep_rms_change_m": mutation.get("tip_sweep_rms_change_m"),
+            "tip_z_rms_change_m": mutation.get("tip_z_rms_change_m"),
+            "spacing_scale_change": mutation.get("spacing_scale_change"),
+            "tip_chord_scale_change": mutation.get("tip_chord_scale_change"),
+            "rmse_improvement_per_mutation_index": improvement.get("rmse_improvement_per_mutation_index"),
+            "rmse_improvement_per_drag_ratio": improvement.get("rmse_improvement_per_drag_ratio"),
         })
     return results
 
@@ -65,12 +121,30 @@ def _collect_targets(campaign_dir: Path) -> list[dict]:
 
 def _write_summary_csv(campaign_dir: Path, results: list[dict]) -> Path:
     path = campaign_dir / "campaign_summary.csv"
+    fieldnames = [
+        "folder", "seed", "n_lobes", "mse_db2", "success",
+        "rmse_db", "mae_db", "bias_db",
+        "baseline_theory_target_rmse_db", "optimized_theory_target_rmse_db",
+        "validated_surrogate_target_rmse_db",
+        "baseline_theory_target_mae_db", "optimized_theory_target_mae_db",
+        "validated_surrogate_target_mae_db",
+        "baseline_peak_angle_error_deg", "optimized_theory_peak_angle_error_deg",
+        "validated_surrogate_peak_angle_error_deg",
+        "baseline_lift_proxy", "baseline_drag_proxy", "baseline_lift_to_drag_proxy",
+        "baseline_separation_burden", "optimized_lift_proxy", "optimized_drag_proxy",
+        "optimized_lift_to_drag_proxy", "optimized_separation_burden",
+        "optimized_mean_abs_incidence_deg", "optimized_spanwise_lift_cv",
+        "lift_retention", "drag_ratio", "lift_to_drag_retention",
+        "separation_ratio", "separation_delta", "spanwise_lift_cv_change",
+        "theory_target_rmse_improvement_db", "surrogate_target_rmse_improvement_db",
+        "theory_target_mae_improvement_db", "surrogate_target_mae_improvement_db",
+        "mutation_magnitude_index", "incidence_rms_change_deg",
+        "root_z_rms_change_m", "tip_sweep_rms_change_m", "tip_z_rms_change_m",
+        "spacing_scale_change", "tip_chord_scale_change",
+        "rmse_improvement_per_mutation_index", "rmse_improvement_per_drag_ratio",
+    ]
     with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=["folder", "seed", "n_lobes", "mse_db2", "success",
-                         "rmse_db", "mae_db", "bias_db"],
-        )
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for row in results:
             writer.writerow(row)
@@ -169,6 +243,334 @@ def _mse_bar_chart_svg(results: list[dict], width: int = 1100, height: int = 520
         f'fill="#222">Normalized Mean Squared Error (dB²)</text>'
     )
 
+    svg.append("</svg>")
+    return "\n".join(svg)
+
+
+def _target_fit_chart_svg(results: list[dict], width: int = 1180, height: int = 560) -> str:
+    sorted_results = sorted(
+        [
+            result for result in results
+            if result["baseline_theory_target_rmse_db"] is not None
+            and result["optimized_theory_target_rmse_db"] is not None
+            and result["validated_surrogate_target_rmse_db"] is not None
+        ],
+        key=lambda result: result["validated_surrogate_target_rmse_db"],
+    )
+    if not sorted_results:
+        return ""
+
+    margin_left = 130
+    margin_right = 40
+    margin_top = 80
+    margin_bottom = 70
+    plot_w = width - margin_left - margin_right
+    plot_h = height - margin_top - margin_bottom
+    n = len(sorted_results)
+    group_h = plot_h / max(n, 1)
+    bar_h = max(6.0, min(18.0, group_h / 4.5))
+    max_rmse = max(
+        max(
+            result["baseline_theory_target_rmse_db"],
+            result["optimized_theory_target_rmse_db"],
+            result["validated_surrogate_target_rmse_db"],
+        )
+        for result in sorted_results
+    ) * 1.1
+    mean_surrogate = sum(
+        result["validated_surrogate_target_rmse_db"] for result in sorted_results
+    ) / len(sorted_results)
+
+    svg = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
+        "<title>Target-Fit Improvement Across Campaign</title>",
+        '<rect width="100%" height="100%" fill="#ffffff" />',
+        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Target-Fit Error Before and After Mutation</text>',
+        f'<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Baseline theory vs target, optimized theory vs target, and validated surrogate vs target. Mean validated RMSE = {mean_surrogate:.2f} dB</text>',
+    ]
+
+    for tick_index in range(6):
+        value = max_rmse * tick_index / 5.0
+        x = margin_left + plot_w * tick_index / 5.0
+        svg.append(
+            f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />'
+        )
+        svg.append(
+            f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{value:.1f}</text>'
+        )
+
+    for index, result in enumerate(sorted_results):
+        y0 = margin_top + index * group_h
+        label_y = y0 + group_h / 2 + 4
+        bars = [
+            ("baseline_theory_target_rmse_db", "#9aa0a6"),
+            ("optimized_theory_target_rmse_db", "#1f77b4"),
+            ("validated_surrogate_target_rmse_db", "#d62728"),
+        ]
+        svg.append(
+            f'<text x="{margin_left - 10}" y="{label_y:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#333">seed {result["seed"]}</text>'
+        )
+        for bar_index, (key, color) in enumerate(bars):
+            value = result[key]
+            y = y0 + 4 + bar_index * (bar_h + 2)
+            w = (value / max_rmse) * plot_w
+            svg.append(
+                f'<rect x="{margin_left}" y="{y:.1f}" width="{w:.1f}" height="{bar_h:.1f}" fill="{color}" rx="2" opacity="0.9" />'
+            )
+        svg.append(
+            f'<text x="{margin_left + ((result["validated_surrogate_target_rmse_db"] / max_rmse) * plot_w) + 6:.1f}" y="{y0 + 4 + 2 * (bar_h + 2) + bar_h * 0.72:.1f}" font-family="Arial, sans-serif" font-size="10" fill="#555">{result["validated_surrogate_target_rmse_db"]:.2f}</text>'
+        )
+
+    legend_y = height - 28
+    legend = [
+        ("#9aa0a6", "baseline theory"),
+        ("#1f77b4", "optimized theory"),
+        ("#d62728", "validated surrogate"),
+    ]
+    legend_x = 40
+    for color, label in legend:
+        svg.append(f'<rect x="{legend_x}" y="{legend_y - 10}" width="18" height="10" fill="{color}" rx="2" />')
+        svg.append(f'<text x="{legend_x + 26}" y="{legend_y}" font-family="Arial, sans-serif" font-size="12" fill="#444">{label}</text>')
+        legend_x += 170
+    svg.append(
+        f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Peak-normalized target-shape RMSE (dB)</text>'
+    )
+    svg.append("</svg>")
+    return "\n".join(svg)
+
+
+def _mutation_effectiveness_svg(results: list[dict], width: int = 1020, height: int = 560) -> str:
+    points = [
+        result for result in results
+        if result["mutation_magnitude_index"] is not None
+        and result["surrogate_target_rmse_improvement_db"] is not None
+    ]
+    if not points:
+        return ""
+
+    margin_left = 90
+    margin_right = 40
+    margin_top = 80
+    margin_bottom = 70
+    plot_w = width - margin_left - margin_right
+    plot_h = height - margin_top - margin_bottom
+    max_x = max(result["mutation_magnitude_index"] for result in points) * 1.1
+    min_y = min(result["surrogate_target_rmse_improvement_db"] for result in points)
+    max_y = max(result["surrogate_target_rmse_improvement_db"] for result in points)
+    if abs(max_y - min_y) < 1.0e-9:
+        max_y += 1.0
+        min_y -= 1.0
+    pad_y = 0.1 * (max_y - min_y)
+    min_y -= pad_y
+    max_y += pad_y
+
+    def x_map(value: float) -> float:
+        return margin_left + (value / max(max_x, 1.0e-9)) * plot_w
+
+    def y_map(value: float) -> float:
+        return margin_top + (max_y - value) / max(max_y - min_y, 1.0e-9) * plot_h
+
+    svg = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
+        "<title>Mutation Effectiveness</title>",
+        '<rect width="100%" height="100%" fill="#ffffff" />',
+        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">How Much Mutation Bought How Much Target-Fit Improvement</text>',
+        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Each point is one target. Higher is better. Left-shifted high points indicate efficient geometry mutation.</text>',
+    ]
+
+    zero_y = y_map(0.0)
+    svg.append(f'<line x1="{margin_left}" y1="{zero_y:.1f}" x2="{width - margin_right}" y2="{zero_y:.1f}" stroke="#cccccc" stroke-width="1.2" stroke-dasharray="4,4" />')
+    for tick_index in range(6):
+        x_value = max_x * tick_index / 5.0
+        x = x_map(x_value)
+        svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{x_value:.1f}</text>')
+    for tick_index in range(6):
+        y_value = min_y + (max_y - min_y) * tick_index / 5.0
+        y = y_map(y_value)
+        svg.append(f'<line x1="{margin_left}" y1="{y:.1f}" x2="{width - margin_right}" y2="{y:.1f}" stroke="#f3f3f3" stroke-width="1" />')
+        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#666">{y_value:.1f}</text>')
+
+    for result in points:
+        x = x_map(result["mutation_magnitude_index"])
+        y = y_map(result["surrogate_target_rmse_improvement_db"])
+        fill = "#2ca02c" if result["surrogate_target_rmse_improvement_db"] >= 0.0 else "#e74c3c"
+        svg.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5.5" fill="{fill}" opacity="0.9" />')
+        svg.append(f'<text x="{x + 8:.1f}" y="{y - 8:.1f}" font-family="Arial, sans-serif" font-size="10" fill="#444">seed {result["seed"]}</text>')
+
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Mutation magnitude index</text>')
+    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="14" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Validated surrogate RMSE improvement vs baseline (dB)</text>')
+    svg.append("</svg>")
+    return "\n".join(svg)
+
+
+def _aero_tradeoff_svg(results: list[dict], width: int = 1040, height: int = 560) -> str:
+    points = [
+        result for result in results
+        if result["validated_surrogate_target_rmse_db"] is not None
+        and result["drag_ratio"] is not None
+        and result["lift_to_drag_retention"] is not None
+    ]
+    if not points:
+        return ""
+
+    margin_left = 90
+    margin_right = 50
+    margin_top = 80
+    margin_bottom = 70
+    plot_w = width - margin_left - margin_right
+    plot_h = height - margin_top - margin_bottom
+    min_x = min(result["validated_surrogate_target_rmse_db"] for result in points)
+    max_x = max(result["validated_surrogate_target_rmse_db"] for result in points)
+    min_y = min(result["drag_ratio"] for result in points)
+    max_y = max(result["drag_ratio"] for result in points)
+    x_pad = max(0.3, 0.1 * max(max_x - min_x, 1.0))
+    y_pad = max(0.05, 0.12 * max(max_y - min_y, 0.1))
+    min_x -= x_pad
+    max_x += x_pad
+    min_y = max(0.0, min_y - y_pad)
+    max_y += y_pad
+    min_ld = min(result["lift_to_drag_retention"] for result in points)
+    max_ld = max(result["lift_to_drag_retention"] for result in points)
+
+    def x_map(value: float) -> float:
+        return margin_left + (value - min_x) / max(max_x - min_x, 1.0e-9) * plot_w
+
+    def y_map(value: float) -> float:
+        return margin_top + (max_y - value) / max(max_y - min_y, 1.0e-9) * plot_h
+
+    def color_for_ld(value: float) -> str:
+        if max_ld - min_ld < 1.0e-9:
+            return "#1f77b4"
+        ratio = (value - min_ld) / (max_ld - min_ld)
+        red = int(231 - 120 * ratio)
+        green = int(76 + 110 * ratio)
+        blue = int(60 + 120 * ratio)
+        return f"#{red:02x}{green:02x}{blue:02x}"
+
+    svg = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
+        "<title>Aerodynamic Tradeoff vs Target Fit</title>",
+        '<rect width="100%" height="100%" fill="#ffffff" />',
+        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Acoustic Fit vs Aerodynamic Cost</text>',
+        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Each point is one target. Left and low is better. Color shows lift-to-drag retention relative to the baseline geometry.</text>',
+    ]
+
+    for tick_index in range(6):
+        x_value = min_x + (max_x - min_x) * tick_index / 5.0
+        x = x_map(x_value)
+        svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{x_value:.1f}</text>')
+    for tick_index in range(6):
+        y_value = min_y + (max_y - min_y) * tick_index / 5.0
+        y = y_map(y_value)
+        svg.append(f'<line x1="{margin_left}" y1="{y:.1f}" x2="{width - margin_right}" y2="{y:.1f}" stroke="#f3f3f3" stroke-width="1" />')
+        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#666">{y_value:.2f}</text>')
+
+    svg.append(f'<line x1="{margin_left}" y1="{y_map(1.0):.1f}" x2="{width - margin_right}" y2="{y_map(1.0):.1f}" stroke="#999999" stroke-width="1.2" stroke-dasharray="4,4" />')
+    for result in points:
+        x = x_map(result["validated_surrogate_target_rmse_db"])
+        y = y_map(result["drag_ratio"])
+        fill = color_for_ld(result["lift_to_drag_retention"])
+        svg.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6" fill="{fill}" opacity="0.92" />')
+        svg.append(f'<text x="{x + 8:.1f}" y="{y - 8:.1f}" font-family="Arial, sans-serif" font-size="10" fill="#444">seed {result["seed"]}</text>')
+
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Validated surrogate target-shape RMSE (dB)</text>')
+    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="14" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Profile-drag proxy ratio vs baseline</text>')
+    svg.append(f'<text x="{width - 240}" y="{height - 42}" font-family="Arial, sans-serif" font-size="11" fill="#666">reference line: drag ratio = 1.0</text>')
+    svg.append("</svg>")
+    return "\n".join(svg)
+
+
+def _aero_retention_chart_svg(results: list[dict], width: int = 1180, height: int = 620) -> str:
+    sorted_results = sorted(
+        [
+            result for result in results
+            if result["lift_retention"] is not None
+            and result["drag_ratio"] is not None
+            and result["lift_to_drag_retention"] is not None
+        ],
+        key=lambda result: result["validated_surrogate_target_rmse_db"]
+        if result["validated_surrogate_target_rmse_db"] is not None else 1.0e9,
+    )
+    if not sorted_results:
+        return ""
+
+    margin_left = 130
+    margin_right = 40
+    margin_top = 84
+    margin_bottom = 74
+    plot_w = width - margin_left - margin_right
+    plot_h = height - margin_top - margin_bottom
+    n = len(sorted_results)
+    group_h = plot_h / max(n, 1)
+    bar_h = max(6.0, min(18.0, group_h / 4.5))
+    max_value = max(
+        max(result["lift_retention"], result["drag_ratio"], result["lift_to_drag_retention"])
+        for result in sorted_results
+    ) * 1.1
+    min_value = min(
+        min(result["lift_retention"], result["drag_ratio"], result["lift_to_drag_retention"])
+        for result in sorted_results
+    )
+    min_value = min(min_value * 1.1, 0.0)
+
+    def x_map(value: float) -> float:
+        return margin_left + (value - min_value) / max(max_value - min_value, 1.0e-9) * plot_w
+
+    svg = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
+        "<title>Aerodynamic Retention Relative to Baseline</title>",
+        '<rect width="100%" height="100%" fill="#ffffff" />',
+        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Aerodynamic Proxy Retention Relative to Baseline Geometry</text>',
+        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Per target: signed lift retention, drag ratio, and lift-to-drag retention. Values near 1.0 indicate little aerodynamic departure from the reference feathered geometry.</text>',
+    ]
+
+    zero_x = x_map(0.0)
+    ref_x = x_map(1.0)
+    svg.append(f'<line x1="{zero_x:.1f}" y1="{margin_top}" x2="{zero_x:.1f}" y2="{height - margin_bottom}" stroke="#d0d0d0" stroke-width="1" />')
+    svg.append(f'<line x1="{ref_x:.1f}" y1="{margin_top}" x2="{ref_x:.1f}" y2="{height - margin_bottom}" stroke="#999999" stroke-width="1.2" stroke-dasharray="4,4" />')
+    for tick_index in range(6):
+        value = min_value + (max_value - min_value) * tick_index / 5.0
+        x = x_map(value)
+        svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{value:.2f}</text>')
+
+    for index, result in enumerate(sorted_results):
+        y0 = margin_top + index * group_h
+        label_y = y0 + group_h / 2 + 4
+        bars = [
+            ("lift_retention", "#2ca02c"),
+            ("drag_ratio", "#e67e22"),
+            ("lift_to_drag_retention", "#1f77b4"),
+        ]
+        svg.append(f'<text x="{margin_left - 10}" y="{label_y:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#333">seed {result["seed"]}</text>')
+        for bar_index, (key, color) in enumerate(bars):
+            value = result[key]
+            y = y0 + 4 + bar_index * (bar_h + 2)
+            x0 = x_map(min(0.0, value))
+            x1 = x_map(max(0.0, value))
+            svg.append(f'<rect x="{x0:.1f}" y="{y:.1f}" width="{(x1 - x0):.1f}" height="{bar_h:.1f}" fill="{color}" rx="2" opacity="0.9" />')
+        ld_text_x = x_map(result["lift_to_drag_retention"]) + 6
+        ld_text_y = y0 + 4 + 2 * (bar_h + 2) + bar_h * 0.72
+        svg.append(
+            f'<text x="{ld_text_x:.1f}" y="{ld_text_y:.1f}" '
+            f'font-family="Arial, sans-serif" font-size="10" fill="#555">'
+            f'{result["lift_to_drag_retention"]:.2f}</text>'
+        )
+
+    legend_y = height - 30
+    legend = [
+        ("#2ca02c", "lift retention"),
+        ("#e67e22", "drag ratio"),
+        ("#1f77b4", "lift-to-drag retention"),
+    ]
+    legend_x = 40
+    for color, label in legend:
+        svg.append(f'<rect x="{legend_x}" y="{legend_y - 10}" width="18" height="10" fill="{color}" rx="2" />')
+        svg.append(f'<text x="{legend_x + 26}" y="{legend_y}" font-family="Arial, sans-serif" font-size="12" fill="#444">{label}</text>')
+        legend_x += 190
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 8}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Relative aero-proxy value vs baseline</text>')
     svg.append("</svg>")
     return "\n".join(svg)
 
@@ -405,6 +807,30 @@ def main() -> None:
         bar_path.write_text(bar_svg, encoding="utf-8")
         print(f"  MSE chart:   {bar_path}")
 
+    target_fit_svg = _target_fit_chart_svg(results)
+    if target_fit_svg:
+        target_fit_path = campaign_dir / "campaign_target_fit_chart.svg"
+        target_fit_path.write_text(target_fit_svg, encoding="utf-8")
+        print(f"  Target fit:  {target_fit_path}")
+
+    mutation_svg = _mutation_effectiveness_svg(results)
+    if mutation_svg:
+        mutation_path = campaign_dir / "campaign_mutation_effectiveness.svg"
+        mutation_path.write_text(mutation_svg, encoding="utf-8")
+        print(f"  Mutation:    {mutation_path}")
+
+    aero_tradeoff_svg = _aero_tradeoff_svg(results)
+    if aero_tradeoff_svg:
+        aero_tradeoff_path = campaign_dir / "campaign_aero_tradeoff.svg"
+        aero_tradeoff_path.write_text(aero_tradeoff_svg, encoding="utf-8")
+        print(f"  Aero trade:  {aero_tradeoff_path}")
+
+    aero_retention_svg = _aero_retention_chart_svg(results)
+    if aero_retention_svg:
+        aero_retention_path = campaign_dir / "campaign_aero_retention_chart.svg"
+        aero_retention_path.write_text(aero_retention_svg, encoding="utf-8")
+        print(f"  Aero bars:   {aero_retention_path}")
+
     # Directivity grid
     grid_svg = _directivity_grid_svg(campaign_dir, results)
     if grid_svg:
@@ -424,6 +850,33 @@ def main() -> None:
         print(f"    Std MSE:   {std:.2f} dB²")
         print(f"    Best MSE:  {best:.2f} dB²")
         print(f"    Worst MSE: {worst:.2f} dB²")
+    surrogate_target_rmses = [
+        r["validated_surrogate_target_rmse_db"]
+        for r in results
+        if r["validated_surrogate_target_rmse_db"] is not None
+    ]
+    baseline_target_rmses = [
+        r["baseline_theory_target_rmse_db"]
+        for r in results
+        if r["baseline_theory_target_rmse_db"] is not None
+    ]
+    mutation_efficiencies = [
+        r["rmse_improvement_per_mutation_index"]
+        for r in results
+        if r["rmse_improvement_per_mutation_index"] is not None
+    ]
+    if surrogate_target_rmses and baseline_target_rmses:
+        print(f"    Mean baseline target RMSE:  {sum(baseline_target_rmses) / len(baseline_target_rmses):.2f} dB")
+        print(f"    Mean validated target RMSE: {sum(surrogate_target_rmses) / len(surrogate_target_rmses):.2f} dB")
+    if mutation_efficiencies:
+        print(f"    Mean RMSE gain per mutation index: {sum(mutation_efficiencies) / len(mutation_efficiencies):.3f}")
+    lift_retentions = [r["lift_retention"] for r in results if r["lift_retention"] is not None]
+    drag_ratios = [r["drag_ratio"] for r in results if r["drag_ratio"] is not None]
+    ld_retentions = [r["lift_to_drag_retention"] for r in results if r["lift_to_drag_retention"] is not None]
+    if lift_retentions and drag_ratios and ld_retentions:
+        print(f"    Mean lift retention:          {sum(lift_retentions) / len(lift_retentions):.3f}")
+        print(f"    Mean drag ratio:              {sum(drag_ratios) / len(drag_ratios):.3f}")
+        print(f"    Mean lift-to-drag retention:  {sum(ld_retentions) / len(ld_retentions):.3f}")
 
 
 if __name__ == "__main__":

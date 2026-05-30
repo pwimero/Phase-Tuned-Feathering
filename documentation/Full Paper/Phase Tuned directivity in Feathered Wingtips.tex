@@ -1,0 +1,590 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{siunitx}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\setlist[itemize]{topsep=4pt,itemsep=2pt}
+\setlist[enumerate]{topsep=4pt,itemsep=2pt}
+
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\vect}[1]{\bm{#1}}
+\newcommand{\mat}[1]{\bm{#1}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\dB}{\si{\decibel}}
+
+\title{
+    \textbf{Phase-Tuned Directivity in Feathered Wingtips}\\
+    \large A Positive-Semidefinite Aeroacoustic Array Model and Geometry Optimization Framework
+}
+
+\author{
+    Author Name\\
+    Affiliation\\
+    \texttt{email@example.com}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Feathered trailing-edge and wingtip assemblies provide a structured geometry in which aerodynamic loading, source spacing, local incidence, sweep, taper, and out-of-plane curvature can alter the spatial distribution of radiated sound. This paper develops a semi-analytical framework for modeling such geometries as broadband, partially coherent acoustic arrays. Each feather is represented as a distributed stochastic loading-noise source line, and the far-field pressure power spectral density is evaluated through a Hermitian positive-semidefinite cross-spectral matrix. This construction guarantees non-negative pressure spectra and separates the mathematical array structure from empirical closures for source strength, coherence, and incidence-dependent phase delay. A shared geometry model is used for acoustic analysis, visualization, surrogate aeroacoustic validation, and computer-aided design export. The optimization problem is posed as target-directivity matching over arbitrary smooth directivity patterns, with post-processing metrics for target-fit improvement, geometry mutation magnitude, and relative aerodynamic performance proxies. Results are intentionally reserved for the final campaign analysis; this manuscript defines the model, implementation, validation protocol, and reporting metrics required to interpret those results.
+\end{abstract}
+
+\section{Introduction}
+
+Aerodynamic sound from lifting surfaces is often treated as a problem of broadband noise reduction: reducing total radiated sound power, lowering trailing-edge noise, or suppressing tonal components. In many applications, however, the spatial distribution of sound is also important. A configuration that does not reduce total acoustic power may still be useful if it redistributes radiation away from a sensitive observer direction or suppressed sector. This motivates the present study of targeted aeroacoustic directivity control.
+
+Feathered trailing-edge and wingtip geometries form a finite distributed array of aerodynamic source regions. Changes in feather incidence, lateral spacing, sweep, vertical displacement, taper, and curvature alter source amplitude, loading direction, coherence, and propagation phase. When coherence between source regions is retained, these changes can modify far-field directivity through array-like interference. The central idea of this work is therefore to model phase-tuned feathering as a partially coherent acoustic-array problem rather than as a generic noise-reduction device.
+
+The claim is deliberately limited. This paper does not claim that feathering is universally quieter, nor that arbitrary directivity can be achieved without aerodynamic cost. The goal is to define and implement a positive-semidefinite model that evaluates how prescribed feather geometry changes normalized broadband loading-noise directivity, and to relate geometry mutation to target matching and aerodynamic performance proxies. The framework is intended as a computational research model that can later be calibrated against high-fidelity simulation or experiment.
+
+The main contributions are:
+\begin{enumerate}
+    \item a shared feather geometry parameterization for acoustic analysis, visualization, and CAD-oriented source-grid export;
+    \item a positive-semidefinite stochastic cross-spectral formulation for distributed feather-source radiation;
+    \item closure models for source spectra, coherence, transfer weighting, and incidence delay;
+    \item a genetic optimization pipeline for matching arbitrary smooth target directivity patterns;
+    \item campaign-level reporting metrics that replace raw optimizer mean-squared error with target-fit improvement, mutation effectiveness, and relative aerodynamic tradeoff metrics.
+\end{enumerate}
+
+\section{Literature}
+
+\subsection{Aeroacoustic loading and trailing-edge models}
+
+Classical aerodynamic sound theory provides the physical context for the model. Curle's extension of Lighthill's analogy describes sound generated by unsteady loading on solid boundaries, while acoustic analogy formulations such as FW-H provide routes from unsteady aerodynamic fields to far-field sound. Trailing-edge noise theories further show how boundary-layer turbulence scattered by a sharp edge can radiate broadband sound. The present work does not attempt to replace these theories. Instead, it uses their structure to motivate a compact transfer kernel and a stochastic source representation for a feathered assembly.
+
+The implemented acoustic model is therefore best interpreted as a closure-based loading-noise surrogate. Its transfer kernel, source autospectrum, coherence law, and incidence-delay law require calibration before absolute sound-pressure-level claims can be made. Without such calibration, the model supports relative comparisons between geometries under a fixed set of assumptions.
+
+\subsection{Array interpretation of distributed aeroacoustic sources}
+
+Feathered geometries are naturally array-like: they contain multiple source regions separated in space and oriented differently. In coherent or partially coherent conditions, the far-field directivity depends not only on source strength but also on phase differences and cross-spectral relationships between source regions. This motivates a cross-spectral representation in which pressure power spectral density is computed as a quadratic form. Such a form is essential because pressure spectra must remain non-negative for all observer directions and frequencies.
+
+The need for a positive-semidefinite source cross-spectrum is a central methodological constraint. A cosine-summed cross-term model can produce negative spectral densities if the source coherence closure is inconsistent. A Hermitian positive-semidefinite matrix construction avoids this failure mode.
+
+\subsection{Low-order aerodynamic screening}
+
+Fast aerodynamic tools and thin-airfoil-style models are useful for screening incidence ranges, Reynolds-number scales, and approximate lift/drag trends. They are not aeroacoustic validation tools. In this project, low-order aerodynamic quantities are used only as relative performance proxies: lift retention, drag ratio, lift-to-drag retention, separation burden, and spanwise lift-distribution variation. These quantities indicate the aerodynamic cost of directivity-focused geometry mutation, but they should not be presented as experimentally validated aerodynamic coefficients.
+
+\section{Methodology}
+
+\subsection{Physical assumptions}
+
+The model assumes linear, subsonic, far-field acoustics in a uniform medium with density $\rho_0$, sound speed $c_0$, free-stream speed $U_\infty$, and Mach number
+\begin{equation}
+    M_\infty = \frac{U_\infty}{c_0}.
+\end{equation}
+The observer direction is
+\begin{equation}
+    \vect{n} =
+    \begin{bmatrix}
+    n_x & n_y & n_z
+    \end{bmatrix}^{T},
+    \qquad
+    \|\vect{n}\| = 1.
+\end{equation}
+
+Each feather is treated as a rigid prescribed geometry. Porosity, compliance, flutter, structural vibration, and detailed separated-flow dynamics are not resolved. The primary source model is a distributed stochastic loading-noise source line. This makes the framework suitable for testing phase, spacing, incidence, and curvature effects before adding more detailed feather physics.
+
+\subsection{Geometry parameterization}
+
+The research coordinate system uses $x$ as streamwise direction, $y$ as spanwise direction, and $z$ as vertical or wing-normal direction. The CAD coordinate convention is mapped internally so that the same parameter set can generate source grids and CAD-compatible geometry metadata.
+
+For feather $i$, the nondimensional source coordinate is $\eta\in[0,1]$. The acoustic source point is
+\begin{equation}
+    \vect{r}_i(\eta;\vect{\mu}) =
+    \begin{bmatrix}
+    x_i(\eta)\\
+    y_i(\eta)\\
+    z_i(\eta)
+    \end{bmatrix},
+\end{equation}
+where $\vect{\mu}$ is the design vector. The physical line element is
+\begin{equation}
+    \dd s_i = J_i(\eta)\dd\eta,
+    \qquad
+    J_i(\eta)=
+    \left\|
+        \frac{\partial\vect{r}_i}{\partial\eta}
+    \right\|.
+\end{equation}
+The implementation estimates $J_i$ by finite differences and applies trapezoidal quadrature along each feather.
+
+Each feather has a local chord $c_i(\eta)$, incidence angle, root position, sweep offset, vertical curvature offset, and taper limit. Across feather index, root vertical translation, tip sweep, and tip vertical curvature use endpoint and midpoint controls. For a normalized feather-family coordinate $s\in[0,1]$, a generic cross-feather quantity $g$ is represented by a quadratic profile
+\begin{equation}
+    g(s)=g_1L_1(s)+g_mL_m(s)+g_7L_7(s),
+\end{equation}
+where $g_1$, $g_m$, and $g_7$ are first-feather, midpoint, and seventh-feather controls. If the midpoint control is unset, it defaults to the mean of the endpoint values, recovering the original linear trend.
+
+The seven feather incidence values are optimized through an orthonormal cosine-basis representation:
+\begin{equation}
+    \alpha_i =
+    \sum_{m=0}^{N-1}
+    B_{im}a_m,
+\end{equation}
+where $a_m$ are incidence shape coefficients and $B_{im}$ is a full-rank basis over feather index. Since the basis is full rank, all seven-feather incidence patterns remain representable, but smooth incidence trends are easier for the optimizer to discover.
+
+\subsection{Three-level acoustic model hierarchy}
+
+The theoretical formulation is built in three levels. Level 1 establishes the compact coherent array limit, Level 2 introduces distributed source lines along each feather, and Level 3 replaces deterministic source amplitudes with a positive-semidefinite stochastic cross-spectral model. This hierarchy is useful because each level exposes a separate physical assumption: compactness, spatial distribution, and stochastic coherence.
+
+\subsubsection{Level 1: compact coherent feather array}
+
+The simplest model treats each feather as one compact acoustic element located at an effective source position $\vect{r}_i$. For observer direction $\vect{n}$ and angular frequency $\omega$, the far-field pressure is
+\begin{equation}
+    p_1(\vect{n},\omega)
+    =
+    \frac{1}{4\pi R}
+    \sum_{i=1}^{N}
+    A_i(\vect{n},\omega)
+    q_i(\omega)
+    \exp\left[
+        \ii k\vect{n}\cdot\vect{r}_i
+    \right],
+    \qquad
+    k=\frac{\omega}{c_0}.
+\end{equation}
+Here $q_i(\omega)$ is the complex source amplitude of feather $i$, and $A_i$ collects loading direction, local transfer, and any compact-source scaling. This level shows the basic phase-tuning mechanism: changing feather positions or incidence-dependent phase changes the relative phases of the summed terms and therefore changes directivity.
+
+If the compact source amplitudes are deterministic, the pressure power is
+\begin{equation}
+    |p_1(\vect{n},\omega)|^2
+    =
+    \frac{1}{(4\pi R)^2}
+    \left|
+        \sum_{i=1}^{N}
+        A_i q_i
+        \exp\left[
+            \ii k\vect{n}\cdot\vect{r}_i
+        \right]
+    \right|^2.
+\end{equation}
+This compact model is not the final model, but it provides the array-theory limit that the distributed formulation must recover when each feather is acoustically compact.
+
+\subsubsection{Level 2: deterministic distributed source lines}
+
+Level 2 resolves each feather as a source line parameterized by $\eta\in[0,1]$. The compact source amplitude $q_i$ is replaced by a distributed source amplitude $q_i(\eta,\omega)$, and the effective source position becomes $\vect{r}_i(\eta)$. The far-field pressure is
+\begin{equation}
+    p_2(\vect{n},\omega)
+    =
+    \frac{1}{4\pi R}
+    \sum_{i=1}^{N}
+    \int_0^1
+    H_i(\eta,\vect{n},\omega)
+    q_i(\eta,\omega)
+    \exp\left[
+        \ii k\vect{n}\cdot\vect{r}_i(\eta)
+    \right]
+    J_i(\eta)\dd\eta.
+\end{equation}
+The transfer factor $H_i$ includes loading direction and observer-dependent acoustic transfer, while $J_i(\eta)$ converts the nondimensional coordinate to physical arc length. In the compact limit, if $q_i(\eta,\omega)$ and $H_i(\eta,\vect{n},\omega)$ vary slowly over the feather and $\vect{r}_i(\eta)$ can be replaced by an effective position, Level 2 reduces to Level 1.
+
+The deterministic distributed model is useful for checking quadrature convergence and pure phase effects. It is still insufficient for broadband turbulent loading noise because turbulent sources are not phase-locked deterministic amplitudes.
+
+\subsubsection{Level 3: stochastic cross-spectral model}
+
+Level 3 treats the distributed sources as stochastic quantities. The continuous source cross-spectrum is
+\begin{equation}
+    \Phi_{qq}^{ij}(\eta,\eta',\omega)
+    =
+    \E\left[
+        q_i(\eta,\omega)q_j^*(\eta',\omega)
+    \right].
+\end{equation}
+Substituting the distributed pressure expression into the second-order pressure spectrum gives
+\begin{align}
+    S_{pp}(\vect{n},\omega)
+    &=
+    \frac{1}{(4\pi R)^2}
+    \sum_{i=1}^{N}
+    \sum_{j=1}^{N}
+    \int_0^1
+    \int_0^1
+    H_i(\eta,\vect{n},\omega)
+    H_j^*(\eta',\vect{n},\omega)
+    \Phi_{qq}^{ij}(\eta,\eta',\omega)
+    \nonumber\\
+    &\quad\times
+    \exp\left[
+        \ii k\vect{n}\cdot
+        \left(
+            \vect{r}_i(\eta)-\vect{r}_j(\eta')
+        \right)
+    \right]
+    J_i(\eta)J_j(\eta')\dd\eta\dd\eta'.
+\end{align}
+This is the primary theoretical model used by the paper. It preserves the phase and geometry structure of Level 2 while allowing partial coherence, zero coherence, and full coherence as limiting cases.
+
+\subsubsection{Discretized positive-semidefinite form}
+
+After quadrature, all source points are collected into a vector of length $M$. The pressure spectrum is evaluated as
+\begin{equation}
+    S_{pp}(\vect{n},\omega)
+    =
+    \frac{1}{(4\pi R)^2}
+    \vect{a}^{H}(\vect{n},\omega)
+    \mat{C}_q(\omega)
+    \vect{a}(\vect{n},\omega),
+\end{equation}
+where $\vect{a}$ contains transfer, loading direction, propagation phase, and quadrature weights. The source cross-spectral matrix is
+\begin{equation}
+    \mat{C}_q(\omega)
+    =
+    \E\left[
+        \vect{q}(\omega)\vect{q}^H(\omega)
+    \right].
+\end{equation}
+If $\mat{C}_q=\mat{C}_q^H$ and $\mat{C}_q\succeq0$, then $S_{pp}\geq0$ for every observer and frequency. This is why the implementation constructs source cross-spectra through a Hermitian positive-semidefinite matrix rather than through unconstrained cosine cross terms.
+
+\subsection{Closure models}
+
+The source cross-spectrum is constructed from autospectra and complex coherence:
+\begin{equation}
+    C_{q,mn}(\omega)
+    =
+    \sqrt{\Phi_m(\omega)\Phi_n(\omega)}
+    \Gamma_{mn}(\omega).
+\end{equation}
+The source autospectrum is
+\begin{equation}
+    \Phi_m(\omega)
+    =
+    C_q\rho_0^2U_\infty^5c_m^2
+    F_\chi(\chi_m)
+    F_\alpha(\alpha_m),
+\end{equation}
+with
+\begin{equation}
+    \chi_m=\frac{\omega c_m S_t}{U_c},
+    \qquad
+    U_c=\beta U_\infty,
+\end{equation}
+and
+\begin{equation}
+    F_\chi(\chi)=
+    \frac{\chi^2}{(1+\chi^2)^{7/3}}.
+\end{equation}
+The incidence-amplitude closure is
+\begin{equation}
+    F_\alpha(\alpha_m)
+    =
+    1+a_\alpha(\alpha_m-\alpha_{\mathrm{ref}})^2.
+\end{equation}
+
+The coherence magnitude is modeled as
+\begin{equation}
+    |\Gamma_{mn}(\omega)|
+    =
+    \exp\left[
+        -\frac{\omega}{U_c}
+        \left(
+            \frac{|\Delta x_{mn}|}{a_x}
+            +
+            \frac{|\Delta y_{mn}|}{a_y}
+            +
+            \frac{|\Delta z_{mn}|}{a_z}
+        \right)
+    \right].
+\end{equation}
+An incidence-dependent delay is represented by
+\begin{equation}
+    \tau_\alpha(\alpha_m)
+    =
+    b_\alpha(\alpha_m-\alpha_{\mathrm{ref}}),
+\end{equation}
+so that
+\begin{equation}
+    \Gamma_{mn}(\omega)
+    =
+    |\Gamma_{mn}(\omega)|
+    \exp\left[
+        \ii\omega
+        \left(
+            \tau_\alpha(\alpha_m)-\tau_\alpha(\alpha_n)
+        \right)
+    \right].
+\end{equation}
+
+The transfer weight for source point $m$ is
+\begin{equation}
+    a_m(\vect{n},\omega)
+    =
+    K_H(\vect{n},\omega)
+    c_m
+    \left(
+        \vect{d}_m\cdot\vect{n}
+    \right)
+    w_m
+    \exp\left[
+        \ii k\vect{n}\cdot\vect{r}_m
+    \right],
+\end{equation}
+with implemented kernel
+\begin{equation}
+    K_H(\vect{n},\omega)
+    =
+    \frac{\omega/c_0}{(1-M_\infty n_x)^2}.
+\end{equation}
+
+\subsection{Surrogate aeroacoustic validation}
+
+The optimized geometry is evaluated against a separate low-cost surrogate simulator. The theoretical model used by the optimizer and the simulator used for validation are intentionally not identical. The theoretical model uses the positive-semidefinite cross-spectral formulation above, with compact closure laws for source autospectra, coherence, transfer weighting, and incidence delay. The surrogate simulator uses the same geometry and observer definitions, but it replaces the optimizer's source-amplitude closure with BPM/TNO-inspired components: turbulent-boundary-layer trailing-edge contribution, separated-flow contribution, bluntness contribution, and a tip-vortex contribution. Each component uses a log-Gaussian spectral shape in a Strouhal-like variable.
+
+The local aerodynamic state for each source segment uses a thin-airfoil lift proxy with soft stall attenuation:
+\begin{equation}
+    C_l =
+    2\pi\alpha
+    \left[
+        1+
+        \left(
+            \frac{|\alpha|}{\alpha_{\mathrm{stall}}}
+        \right)^8
+    \right]^{-1},
+\end{equation}
+and a drag proxy
+\begin{equation}
+    C_d =
+    C_{d0}+k_dC_l^2.
+\end{equation}
+The surrogate is not high-fidelity CFD and is not experimental validation. Its role is to provide an independent, internally consistent comparison layer. Agreement between the theoretical prediction and the surrogate simulation tests whether the geometry-to-directivity mechanism transfers across two different source closures. In this sense, theory--surrogate agreement supports the internal reliability of the formulation, but it does not prove absolute aeroacoustic accuracy against physical data.
+
+\subsection{Target generation and fit metrics}
+
+Each arbitrary target directivity pattern is generated from one to three smooth lobes on the observer sphere:
+\begin{equation}
+    T_o =
+    \sum_{\ell=1}^{N_\ell}
+    A_\ell
+    \left[
+        \frac{1+\vect{n}_o\cdot\vect{c}_\ell}{2}
+    \right]^{p_\ell}.
+\end{equation}
+The target is peak normalized in decibels:
+\begin{equation}
+    T_o^{\dB}
+    =
+    10\log_{10}
+    \left(
+        \frac{T_o}{\max_o T_o}
+    \right).
+\end{equation}
+
+For a candidate geometry, the predicted directivity is also peak normalized. The optimizer minimizes
+\begin{equation}
+    J_{\mathrm{fit}}
+    =
+    \frac{1}{N_o}
+    \sum_{o=1}^{N_o}
+    \left(
+        \hat{S}_o^{\dB}
+        -
+        \hat{T}_o^{\dB}
+    \right)^2.
+\end{equation}
+This value is used internally by the optimizer, but the paper reports more interpretable target-fit metrics:
+\begin{align}
+    E_{\mathrm{RMSE}}
+    &=
+    \left[
+        \frac{1}{N_o}
+        \sum_{o=1}^{N_o}
+        \left(
+            \hat{S}_o^{\dB}-\hat{T}_o^{\dB}
+        \right)^2
+    \right]^{1/2},\\
+    E_{\mathrm{MAE}}
+    &=
+    \frac{1}{N_o}
+    \sum_{o=1}^{N_o}
+    \left|
+        \hat{S}_o^{\dB}-\hat{T}_o^{\dB}
+    \right|.
+\end{align}
+Peak-direction error is also reported:
+\begin{equation}
+    E_{\mathrm{peak}}
+    =
+    \cos^{-1}
+    \left(
+        \vect{n}_{\mathrm{target\,peak}}
+        \cdot
+        \vect{n}_{\mathrm{predicted\,peak}}
+    \right).
+\end{equation}
+
+\subsection{Aerodynamic tradeoff metrics}
+
+The aerodynamic cost of mutation is evaluated relative to the reference feathered geometry. For each source segment $m$, define
+\begin{equation}
+    A_m^*=c_m\Delta s_m.
+\end{equation}
+Integrated lift and drag proxies are
+\begin{align}
+    L^*
+    &=
+    \sum_m
+    \frac{1}{2}\rho_0U_\infty^2
+    C_{l,m}A_m^*,\\
+    D^*
+    &=
+    \sum_m
+    \frac{1}{2}\rho_0U_\infty^2
+    C_{d,m}A_m^*.
+\end{align}
+The lift-to-drag proxy is
+\begin{equation}
+    \left(\frac{L}{D}\right)^*
+    =
+    \frac{L^*}{D^*}.
+\end{equation}
+The reported baseline-relative quantities are
+\begin{align}
+    R_L &= \frac{L^*_{\mathrm{opt}}}{L^*_{\mathrm{base}}},\\
+    R_D &= \frac{D^*_{\mathrm{opt}}}{D^*_{\mathrm{base}}},\\
+    R_{L/D} &=
+    \frac{(L/D)^*_{\mathrm{opt}}}{(L/D)^*_{\mathrm{base}}}.
+\end{align}
+These are treated as signed quantities because large incidence mutations can reverse the integrated lift proxy.
+
+\subsection{Optimization and numerical implementation}
+
+The genetic optimizer searches an 18-variable design vector. Seven variables are incidence shape coefficients. The remaining variables control feather spacing, endpoint and midpoint root vertical translations, endpoint and midpoint tip sweep, endpoint and midpoint tip vertical curvature, and minimum tip-chord scale.
+
+Optimization uses a differential-evolution-style population search. The population size is
+\begin{equation}
+    P=N_pN_\mu,
+\end{equation}
+where $N_p$ is the population multiplier and $N_\mu$ is the number of design variables. Candidate mutation uses three distinct parent vectors and a random mutation factor. Trial vectors replace existing vectors only when they improve the objective. The default stopping rule is patience based: optimization stops after a specified number of generations without improvement.
+
+The only direct geometry penalty is projected source-line intersection. Candidate source lines are checked on a coarse source grid; intersections receive a large penalty. This keeps the search broad while preventing self-crossing geometries that cannot be interpreted cleanly.
+
+Each generation is evaluated in two stages. All candidates are first scored on a coarse acoustic grid with reduced source quadrature, strided observers, and strided frequencies. The best fraction is then re-evaluated at the full genetic-algorithm resolution. Final surrogate validation is separate from the genetic search and uses a denser observer grid and broader frequency set:
+\begin{equation}
+    f\in\{250,500,1000,2000,4000,8000\}\ \mathrm{Hz}.
+\end{equation}
+
+The implementation is organized as a Python research package. The core modules are:
+\begin{itemize}
+    \item \texttt{geometry}, \texttt{closures}, \texttt{acoustics}, and \texttt{acoustics\_torch};
+    \item \texttt{simulation}, \texttt{ga\_optimization}, and \texttt{pipeline\_ga};
+    \item \texttt{aggregate\_campaign} and \texttt{visualization}.
+\end{itemize}
+The PyTorch acoustic path uses Apple Metal Performance Shaders when available. Geometry generation and intersection checks remain CPU-side, while batched acoustic evaluation is performed on the device.
+
+\subsection{Saved artifacts and reproducibility}
+
+Each target run is saved in a separate directory. The important artifacts are:
+\begin{itemize}
+    \item \texttt{ga\_stats.json}, \texttt{target\_definition.json}, and \texttt{optimized\_geometry.json};
+    \item \texttt{source\_grid.csv}, \texttt{surrogate\_simulation.csv}, and \texttt{theory\_vs\_simulation.csv};
+    \item \texttt{validation\_summary.json} and \texttt{target\_fit\_summary.json}.
+\end{itemize}
+The campaign aggregator reads these files to regenerate summary tables and figures without rerunning the optimization or surrogate simulation.
+
+For publication, the archived package should include the code version, target seed list, environment information, all per-target artifacts, and generated figures.
+
+\section{Results}
+
+This section is intentionally reserved for the final campaign outputs. It should report:
+\begin{enumerate}
+    \item the number of target seeds and the lobe-count distribution;
+    \item baseline, optimized-theory, and validated-surrogate target-fit statistics;
+    \item representative directivity plots for easy, median, and hard targets;
+    \item mutation effectiveness across targets;
+    \item aerodynamic tradeoff plots for target-fit error versus drag ratio and lift-to-drag retention;
+    \item confidence intervals and paired baseline-versus-optimized tests;
+    \item failure cases where directivity improves at unacceptable aerodynamic cost.
+\end{enumerate}
+
+\section{Discussion}
+
+\subsection{Interpretation of the model}
+
+The framework should be interpreted as a semi-analytical stochastic array model with calibrated closures, not as a complete first-principles aeroacoustic solver. Its strength is that it makes the relationship between geometry, phase, coherence, and directivity explicit while preserving non-negative pressure spectra. Its weakness is that absolute acoustic and aerodynamic claims depend on closure calibration.
+
+\subsection{Interpreting target-fit improvement}
+
+Raw optimizer mean-squared error is useful for ranking candidates during search but is too abstract for physical interpretation. The campaign-level metrics should therefore focus on baseline-to-optimized changes in target-shape RMSE, target-shape MAE, peak-direction error, and surrogate transfer. A geometry that improves global RMSE but worsens peak-direction alignment should be discussed differently from one that improves both.
+
+\subsection{Interpreting theory--surrogate agreement}
+
+The Results section should report both theory--surrogate agreement and surrogate--target agreement. Low theory--surrogate error indicates that the positive-semidefinite theoretical formulation and the surrogate simulator produce consistent directivity trends for the same mutated geometry. Low surrogate--target error indicates that the geometry remains effective after passing through the independent surrogate source model. The strongest internal validation case is therefore a geometry that improves target fit relative to baseline and also maintains close theory--surrogate agreement. Conversely, a good theoretical target fit with poor surrogate agreement should be treated as model-specific optimization rather than reliable directivity control.
+
+\subsection{Interpreting aerodynamic tradeoff}
+
+The aerodynamic proxy results should be used to ask whether directivity matching required unacceptable geometry mutation. Important cases include large drag-ratio increases, loss or reversal of lift proxy, reduced lift-to-drag retention, and increased separation burden. These results should be framed as relative trends under the surrogate state model, not as final aerodynamic performance data.
+
+\subsection{Statistical interpretation}
+
+Each target is one draw from the random target generator. Ten targets are adequate for debugging and qualitative examples, but a main paper campaign should use a larger sample. A practical minimum is 50 targets, with 100 preferred if runtime permits. Final reporting should include means, standard deviations, confidence intervals, and paired baseline-versus-optimized comparisons. Results should also be grouped by target lobe count to test whether performance degrades with target complexity.
+
+\subsection{Limitations}
+
+The current model excludes flexible feather mechanics, porosity, detailed separated flow, near-field effects, wind-tunnel reflections, and experimental calibration. The optimizer currently penalizes projected source-line intersections but does not directly enforce aerodynamic performance during the search. These limitations should be treated as boundaries of the present contribution rather than hidden assumptions.
+
+\section{Conclusion}
+
+This paper formulates phase-tuned feathering as a PSD-safe partially coherent acoustic-array problem. The model represents feathered geometry through distributed source lines, evaluates far-field spectra using a Hermitian cross-spectral matrix, and connects geometry mutation to target directivity matching and aerodynamic proxy changes. The software implementation provides a complete path from geometry generation to genetic optimization, surrogate validation, campaign aggregation, and reproducible plot regeneration.
+
+The final contribution will depend on the campaign results. If the optimized geometries consistently reduce target-shape error relative to the baseline while retaining acceptable aerodynamic proxy performance, the results will support the claim that feather geometry can be used as a controllable directivity-shaping mechanism within the assumptions of the model. If the best acoustic fits require severe lift loss, drag increase, or separation burden, the results will instead identify the practical limits of directivity-focused feather mutation.
+
+\begin{thebibliography}{99}
+
+\bibitem{Curle1955}
+N. Curle,
+``The influence of solid boundaries upon aerodynamic sound,''
+\emph{Proceedings of the Royal Society A},
+vol. 231, pp. 505--514, 1955.
+
+\bibitem{Howe1978}
+M. S. Howe,
+``A review of the theory of trailing edge noise,''
+NASA Technical Report, NTRS 19780018938, 1978.
+
+\bibitem{Farassat2007}
+F. Farassat,
+``Derivation of Formulations 1 and 1A of Farassat,''
+NASA Technical Report, NTRS 20070010579, 2007.
+
+\bibitem{DrelaXFOIL}
+M. Drela,
+\emph{XFOIL: Subsonic Airfoil Development System},
+MIT documentation.
+
+\bibitem{AeroSandbox}
+P. Sharpe,
+\emph{AeroSandbox: Aircraft Design Optimization in Python},
+software documentation.
+
+\bibitem{pymoo}
+J. Blank and K. Deb,
+``pymoo: Multi-objective Optimization in Python,''
+software documentation and associated publication.
+
+\bibitem{DEAP}
+F.-A. Fortin, F.-M. De Rainville, M.-A. Gardner, M. Parizeau, and C. Gagne,
+``DEAP: Evolutionary Algorithms Made Easy,''
+\emph{Journal of Machine Learning Research}, 2012.
+
+\end{thebibliography}
+
+\end{document}
