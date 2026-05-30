@@ -20,7 +20,17 @@ import json
 
 from .closures import ClosureParams, FlowConfig
 from .acoustics import evaluate_spp
-from .ga_optimization import GAConfig, run_optimization_torch
+from .ga_optimization import (
+    FREEDOM_LEVEL_LABELS,
+    FREEDOM_LEVEL_ORDER,
+    GAConfig,
+    OptimizationRuntime,
+    active_parameter_count,
+    effective_closures,
+    effective_population_size,
+    run_optimization_torch,
+)
+from .aggregate_campaign import aggregate_campaign_dir
 from .geometry import default_geometry, source_grid
 from .io import write_geometry_metadata_json, write_source_grid_csv
 from .observers import ObserverGrid
@@ -37,7 +47,6 @@ from .validation import (
     write_comparison_csv,
     write_summary_json,
 )
-from .visualization import write_simulator_geometry_renders, write_validation_figures
 
 
 def generate_arbitrary_target(
@@ -398,13 +407,19 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output-dir",
         type=Path,
         default=Path("outputs/optimization"),
-        help="Directory to save the GA results and validation plots.",
+        help="Directory to save a single target run.",
+    )
+    parser.add_argument(
+        "--campaign-dir",
+        type=Path,
+        default=None,
+        help="Directory to save a multi-target campaign.",
     )
     parser.add_argument(
         "--popsize",
         type=int,
-        default=10,
-        help="Multiplier for the GA population size.",
+        default=9,
+        help="Multiplier for the GA population size per active parameter.",
     )
     parser.add_argument(
         "--maxiter",
@@ -415,7 +430,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--n-eta",
         type=int,
-        default=16,
+        default=12,
         help="Integration points per feather.",
     )
     parser.add_argument(
@@ -427,14 +442,40 @@ def _build_parser() -> argparse.ArgumentParser:
             "If omitted, a random target is generated each run."
         ),
     )
+    parser.add_argument(
+        "--freedom-level",
+        choices=FREEDOM_LEVEL_ORDER,
+        default="full",
+        help="Ablation condition: incidence (incidence-only), zero_coherence, no_delay, or full.",
+    )
+    parser.add_argument(
+        "--freedom-levels",
+        default="full",
+        help="Comma-separated freedom levels for in-process campaigns.",
+    )
+    parser.add_argument(
+        "--n-targets",
+        type=int,
+        default=1,
+        help="Number of targets to run in campaign mode.",
+    )
+    parser.add_argument(
+        "--start-seed",
+        type=int,
+        default=1,
+        help="Starting seed for campaign mode.",
+    )
     return parser
 
 
-def run_pipeline(args: argparse.Namespace) -> None:
-    output_dir = args.output_dir
+def _run_single_target(
+    output_dir: Path,
+    args: argparse.Namespace,
+    runtime: OptimizationRuntime | None = None,
+    warm_start_genes: list[float] | None = None,
+) -> list[float]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate an arbitrary target
     observers = ObserverGrid.spherical(8, 10)
     target_pattern_db, target_meta = generate_arbitrary_target(observers, seed=args.seed)
     target_fn = _target_fn_from_pattern(observers, target_pattern_db)
@@ -443,11 +484,12 @@ def run_pipeline(args: argparse.Namespace) -> None:
     print(" GENERALIZED DIRECTIVITY SOLVER")
     print("========================================================")
     print(f" Target: {target_meta['n_lobes']} random lobe(s), seed={args.seed}")
+    print(f" Freedom: {FREEDOM_LEVEL_LABELS[args.freedom_level]}")
     print(f" Observer grid: {len(observers.directions)} directions")
     print(f"========================================================\n")
 
     validation_frequencies_hz = (250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0)
-    validation_observers = ObserverGrid.spherical(12, 24)
+    validation_observers = ObserverGrid.spherical(7, 14)
 
     # Save the target definition
     with open(output_dir / "target_definition.json", "w") as f:
@@ -455,7 +497,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
     # 1. RUN GENETIC ALGORITHM
     flow = FlowConfig()
-    closures = ClosureParams()
+    closures = effective_closures(args.freedom_level, ClosureParams())
 
     config = GAConfig(
         target_pattern_db=target_pattern_db,
@@ -465,9 +507,18 @@ def run_pipeline(args: argparse.Namespace) -> None:
         n_eta=args.n_eta,
         flow=flow,
         closures=closures,
+        freedom_level=args.freedom_level,
     )
+    active_parameters = active_parameter_count(config)
+    effective_population = effective_population_size(config)
+    print(f" Active parameters: {active_parameters}")
+    print(f" Effective population: {effective_population}")
 
-    best_geometry, best_score, success = run_optimization_torch(config)
+    best_geometry, best_genes, best_score, success = run_optimization_torch(
+        config,
+        runtime=runtime,
+        warm_start_genes=warm_start_genes,
+    )
     optimized_params = best_geometry
     base_params = default_geometry()
 
@@ -479,17 +530,26 @@ def run_pipeline(args: argparse.Namespace) -> None:
         "score_mse_db2": best_score,
         "target_seed": args.seed,
         "target_lobes": target_meta["n_lobes"],
+        "freedom_level": args.freedom_level,
+        "freedom_label": FREEDOM_LEVEL_LABELS[args.freedom_level],
+        "freedom_level_index": FREEDOM_LEVEL_ORDER.index(args.freedom_level) + 1,
         "incidence_parameterization": "orthonormal_cosine_shape_coefficients",
         "popsize": args.popsize,
+        "active_parameter_count": active_parameters,
+        "effective_population_size": effective_population,
         "maxiter": args.maxiter,
         "n_eta": args.n_eta,
         "ga_observer_count": len(observers.directions),
         "ga_frequencies_hz": list(config.frequencies_hz),
+        "validation_observer_count": len(validation_observers.directions),
+        "validation_frequencies_hz": list(validation_frequencies_hz),
         "coarse_n_eta": config.coarse_n_eta,
         "coarse_observer_stride": config.coarse_observer_stride,
         "coarse_frequency_stride": config.coarse_frequency_stride,
         "refinement_top_fraction": config.refinement_top_fraction,
         "refinement_min_candidates": config.refinement_min_candidates,
+        "patience": config.patience,
+        "min_fitness_improvement_db2": config.min_fitness_improvement_db2,
     }
     with open(output_dir / "ga_stats.json", "w") as f:
         json.dump(ga_stats, f, indent=2)
@@ -500,12 +560,6 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
     source_grid_path = write_source_grid_csv(
         output_dir / "source_grid.csv",
-        optimized_params,
-        n_eta=args.n_eta,
-    )
-
-    render_paths = write_simulator_geometry_renders(
-        output_dir,
         optimized_params,
         n_eta=args.n_eta,
     )
@@ -539,8 +593,6 @@ def run_pipeline(args: argparse.Namespace) -> None:
         output_dir / "validation_summary.json",
         comparison,
     )
-    figure_paths = write_validation_figures(output_dir, comparison)
-
     baseline_target_fit = _theory_target_metrics(
         base_params,
         observers=validation_observers,
@@ -631,9 +683,69 @@ def run_pipeline(args: argparse.Namespace) -> None:
     print(f"Optimal Geometry JSON: {output_dir / 'optimized_geometry.json'}")
     print(f"Simulation CSV: {simulation_path}")
     print(f"Target-fit summary: {output_dir / 'target_fit_summary.json'}")
-    print("Geometry renders generated.")
-    print("Validation figures generated.")
+    print("Per-run CSV/JSON artifacts saved; aggregate plots are generated by the campaign aggregator.")
     print(comparison_summary_text(comparison.summary))
+    return [float(value) for value in best_genes]
+
+
+def run_campaign(args: argparse.Namespace) -> None:
+    if args.campaign_dir is None:
+        raise ValueError("campaign_dir is required for campaign mode.")
+    campaign_dir = args.campaign_dir
+    campaign_dir.mkdir(parents=True, exist_ok=True)
+    freedom_levels = [
+        level.strip()
+        for level in args.freedom_levels.split(",")
+        if level.strip()
+    ]
+    runtime = OptimizationRuntime()
+    end_seed = args.start_seed + args.n_targets - 1
+
+    print("\n========================================================")
+    print(" GENERALIZED DIRECTIVITY CAMPAIGN")
+    print("========================================================")
+    print(f" Targets: {args.n_targets} | Seeds: {args.start_seed}-{end_seed}")
+    print(f" Pop multiplier per active parameter: {args.popsize} | MaxIter: {args.maxiter} | N_eta: {args.n_eta}")
+    print(f" Freedom levels: {', '.join(freedom_levels)}")
+    print("========================================================\n")
+
+    for target_index in range(args.n_targets):
+        seed = args.start_seed + target_index
+        warm_start_genes: list[float] | None = None
+        for freedom_level in freedom_levels:
+            if len(freedom_levels) == 1 and freedom_level == "full":
+                level_output_dir = campaign_dir
+            else:
+                level_output_dir = campaign_dir / freedom_level
+            target_dir = level_output_dir / f"target_{seed:03d}"
+
+            print("--------------------------------------------------------")
+            print(f" Freedom {freedom_level} | Target {target_index + 1}/{args.n_targets}  (seed={seed})")
+            print("--------------------------------------------------------")
+
+            target_args = argparse.Namespace(**vars(args))
+            target_args.output_dir = target_dir
+            target_args.seed = seed
+            target_args.freedom_level = freedom_level
+            warm_start_genes = _run_single_target(
+                target_dir,
+                target_args,
+                runtime=runtime,
+                warm_start_genes=warm_start_genes,
+            )
+            print("")
+
+    print("========================================================")
+    print(f" All {args.n_targets} targets complete. Aggregating results...")
+    print("========================================================")
+    aggregate_campaign_dir(campaign_dir)
+
+
+def run_pipeline(args: argparse.Namespace) -> None:
+    if args.campaign_dir is not None:
+        run_campaign(args)
+        return
+    _run_single_target(args.output_dir, args)
 
 
 def main() -> None:

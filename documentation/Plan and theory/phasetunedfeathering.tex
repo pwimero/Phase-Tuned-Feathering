@@ -991,49 +991,43 @@ The code should be organized as a research package rather than a single script:
     \item Re-test selected designs using independent CFD or experiment.
 \end{enumerate}
 
-\subsection{Staged optimization plan}
+\subsection{Ablation-oriented optimization plan}
 
-The optimization variables should be introduced gradually.
+The campaign runs the full-geometry optimizer under each of the three ablation
+conditions.  Comparing results isolates the contribution of each mechanism.
 
-\begin{longtable}{p{0.16\linewidth} p{0.34\linewidth} p{0.38\linewidth}}
+\begin{longtable}{p{0.20\linewidth} p{0.34\linewidth} p{0.34\linewidth}}
 \toprule
-\textbf{Stage} & \textbf{Variables} & \textbf{Purpose} \\
+\textbf{Condition} & \textbf{What changes} & \textbf{Question answered} \\
 \midrule
 \endhead
 
-1
+Incidence only
 &
-$\alpha_i$ only
+Only $\alpha_i$ vary; all geometry locked to baseline.
 &
-Test whether incidence phase tuning is meaningful.
+Is incidence phase tuning alone sufficient, or is full geometry mutation needed?
 \\
 
-2
+Zero coherence
 &
-$\alpha_i$, $y_i^0$
+Full geometry search, but $\Gamma_{mn}=\delta_{mn}$ (sources uncorrelated).
 &
-Test spacing and lateral directivity control.
+Does the array phase-tuning mechanism matter, or is directivity shaping purely an amplitude effect?
 \\
 
-3
+No incidence delay
 &
-$\alpha_i$, $y_i^0$, $z_i^0$, limited sweep
+Full geometry search, but $b_\alpha=0$ (no incidence-dependent phase delay).
 &
-Test three-dimensional placement effects.
+Does the incidence-delay closure contribute, or is spatial phase alone sufficient?
 \\
 
-4
+Full model
 &
-Add curvature and taper
+All geometry variables and all closure features active.
 &
-Search broader geometry space.
-\\
-
-5
-&
-Add closure uncertainty
-&
-Perform robust optimization and identify designs that survive parameter variation.
+Baseline for comparison; best achievable target fit under the complete model.
 \\
 
 \bottomrule
@@ -1114,7 +1108,7 @@ The results should include:
 \begin{itemize}
     \item uncertainty bands on directivity maps;
     \item sensitivity rankings for closure parameters;
-    \item ablation studies removing incidence phase, coherence, sweep, taper, and curvature effects;
+    \item ablation studies: zero-coherence (tests the core array mechanism), no-incidence-delay (tests the delay closure contribution), and incidence-only (tests whether geometry beyond incidence is needed);
     \item random-seed repeatability for optimization.
 \end{itemize}
 

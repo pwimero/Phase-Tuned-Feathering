@@ -27,8 +27,9 @@ from pathlib import Path
 def _collect_targets(campaign_dir: Path) -> list[dict]:
     """Walk target_xxx/ subdirectories and collect stats + target info."""
     results = []
-    for target_dir in sorted(campaign_dir.iterdir()):
-        if not target_dir.is_dir() or not target_dir.name.startswith("target_"):
+    for stats_path in sorted(campaign_dir.rglob("ga_stats.json")):
+        target_dir = stats_path.parent
+        if not target_dir.name.startswith("target_"):
             continue
         stats_path = target_dir / "ga_stats.json"
         target_path = target_dir / "target_definition.json"
@@ -63,11 +64,16 @@ def _collect_targets(campaign_dir: Path) -> list[dict]:
         relative_aero = fit_summary.get("relative_aero", {})
         improvement = fit_summary.get("improvement", {})
         mutation = fit_summary.get("mutation", {})
+        relative_folder = target_dir.relative_to(campaign_dir).as_posix()
 
         results.append({
-            "folder": target_dir.name,
+            "folder": relative_folder,
+            "target_path": str(target_dir),
             "seed": target_meta.get("seed"),
             "n_lobes": target_meta.get("n_lobes"),
+            "freedom_level": stats.get("freedom_level", "full"),
+            "freedom_label": stats.get("freedom_label", "Full geometry"),
+            "freedom_level_index": stats.get("freedom_level_index", 6),
             "mse_db2": stats.get("score_mse_db2"),
             "success": stats.get("success", False),
             "rmse_db": val_summary.get("all", {}).get("rmse_db"),
@@ -122,7 +128,8 @@ def _collect_targets(campaign_dir: Path) -> list[dict]:
 def _write_summary_csv(campaign_dir: Path, results: list[dict]) -> Path:
     path = campaign_dir / "campaign_summary.csv"
     fieldnames = [
-        "folder", "seed", "n_lobes", "mse_db2", "success",
+        "folder", "target_path", "seed", "n_lobes", "freedom_level", "freedom_label",
+        "freedom_level_index", "mse_db2", "success",
         "rmse_db", "mae_db", "bias_db",
         "baseline_theory_target_rmse_db", "optimized_theory_target_rmse_db",
         "validated_surrogate_target_rmse_db",
@@ -149,6 +156,201 @@ def _write_summary_csv(campaign_dir: Path, results: list[dict]) -> Path:
         for row in results:
             writer.writerow(row)
     return path
+
+
+def _mean(values: list[float]) -> float | None:
+    values = [value for value in values if value is not None]
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def _std(values: list[float]) -> float | None:
+    values = [value for value in values if value is not None]
+    if not values:
+        return None
+    mean = sum(values) / len(values)
+    return math.sqrt(sum((value - mean) ** 2 for value in values) / len(values))
+
+
+def _freedom_summary(results: list[dict]) -> list[dict]:
+    grouped: dict[str, list[dict]] = {}
+    for row in results:
+        grouped.setdefault(row.get("freedom_level") or "full", []).append(row)
+
+    summary: list[dict] = []
+    for freedom_level, rows in grouped.items():
+        first = rows[0]
+        validated_rmse = [
+            row["validated_surrogate_target_rmse_db"]
+            for row in rows
+            if row["validated_surrogate_target_rmse_db"] is not None
+        ]
+        improvement = [
+            row["surrogate_target_rmse_improvement_db"]
+            for row in rows
+            if row["surrogate_target_rmse_improvement_db"] is not None
+        ]
+        mutation = [
+            row["mutation_magnitude_index"]
+            for row in rows
+            if row["mutation_magnitude_index"] is not None
+        ]
+        drag_ratio = [
+            row["drag_ratio"]
+            for row in rows
+            if row["drag_ratio"] is not None
+        ]
+        ld_retention = [
+            row["lift_to_drag_retention"]
+            for row in rows
+            if row["lift_to_drag_retention"] is not None
+        ]
+        summary.append({
+            "freedom_level": freedom_level,
+            "freedom_label": first.get("freedom_label") or freedom_level,
+            "freedom_level_index": first.get("freedom_level_index") or 999,
+            "target_count": len(rows),
+            "mean_validated_surrogate_target_rmse_db": _mean(validated_rmse),
+            "std_validated_surrogate_target_rmse_db": _std(validated_rmse),
+            "mean_surrogate_target_rmse_improvement_db": _mean(improvement),
+            "std_surrogate_target_rmse_improvement_db": _std(improvement),
+            "mean_mutation_magnitude_index": _mean(mutation),
+            "mean_drag_ratio": _mean(drag_ratio),
+            "mean_lift_to_drag_retention": _mean(ld_retention),
+        })
+    return sorted(summary, key=lambda row: row["freedom_level_index"])
+
+
+def _write_freedom_summary_csv(campaign_dir: Path, summary: list[dict]) -> Path:
+    path = campaign_dir / "campaign_freedom_summary.csv"
+    fieldnames = [
+        "freedom_level", "freedom_label", "freedom_level_index", "target_count",
+        "mean_validated_surrogate_target_rmse_db",
+        "std_validated_surrogate_target_rmse_db",
+        "mean_surrogate_target_rmse_improvement_db",
+        "std_surrogate_target_rmse_improvement_db",
+        "mean_mutation_magnitude_index",
+        "mean_drag_ratio",
+        "mean_lift_to_drag_retention",
+    ]
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in summary:
+            writer.writerow(row)
+    return path
+
+
+def _freedom_fit_chart_svg(summary: list[dict], width: int = 1120, height: int = 560) -> str:
+    rows = [
+        row for row in summary
+        if row["mean_validated_surrogate_target_rmse_db"] is not None
+    ]
+    if len(rows) < 2:
+        return ""
+
+    margin_left = 95
+    margin_right = 40
+    margin_top = 82
+    margin_bottom = 120
+    plot_w = width - margin_left - margin_right
+    plot_h = height - margin_top - margin_bottom
+    max_rmse = max(row["mean_validated_surrogate_target_rmse_db"] for row in rows) * 1.15
+    bar_w = min(82.0, plot_w / max(len(rows), 1) * 0.55)
+    gap = plot_w / max(len(rows), 1)
+
+    svg = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
+        "<title>Design Freedom vs Target Fit</title>",
+        '<rect width="100%" height="100%" fill="#ffffff" />',
+        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Design Freedom vs Validated Target-Fit Error</text>',
+        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Lower RMSE means better directivity matching. Bars show mean validated surrogate target-shape RMSE across the same target seeds.</text>',
+    ]
+    for tick_index in range(6):
+        value = max_rmse * tick_index / 5.0
+        y = margin_top + (1.0 - value / max(max_rmse, 1.0e-9)) * plot_h
+        svg.append(f'<line x1="{margin_left}" y1="{y:.1f}" x2="{width - margin_right}" y2="{y:.1f}" stroke="#eeeeee" stroke-width="1" />')
+        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#666">{value:.1f}</text>')
+
+    for index, row in enumerate(rows):
+        value = row["mean_validated_surrogate_target_rmse_db"]
+        x = margin_left + index * gap + 0.5 * gap
+        bar_h = (value / max(max_rmse, 1.0e-9)) * plot_h
+        y = margin_top + plot_h - bar_h
+        svg.append(f'<rect x="{x - bar_w / 2:.1f}" y="{y:.1f}" width="{bar_w:.1f}" height="{bar_h:.1f}" fill="#1f77b4" rx="3" opacity="0.9" />')
+        svg.append(f'<text x="{x:.1f}" y="{y - 6:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#333">{value:.2f}</text>')
+        label = row["freedom_level"].replace("_", " ")
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 26}" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#444" transform="rotate(-35 {x:.1f} {height - margin_bottom + 26})">{label}</text>')
+
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 16}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Allowed geometry mutation freedom</text>')
+    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="14" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Mean validated target RMSE (dB)</text>')
+    svg.append("</svg>")
+    return "\n".join(svg)
+
+
+def _freedom_tradeoff_chart_svg(summary: list[dict], width: int = 1120, height: int = 560) -> str:
+    rows = [
+        row for row in summary
+        if row["mean_surrogate_target_rmse_improvement_db"] is not None
+        and row["mean_drag_ratio"] is not None
+    ]
+    if len(rows) < 2:
+        return ""
+
+    margin_left = 95
+    margin_right = 120
+    margin_top = 82
+    margin_bottom = 80
+    plot_w = width - margin_left - margin_right
+    plot_h = height - margin_top - margin_bottom
+    min_x = min(row["mean_surrogate_target_rmse_improvement_db"] for row in rows)
+    max_x = max(row["mean_surrogate_target_rmse_improvement_db"] for row in rows)
+    min_y = min(row["mean_drag_ratio"] for row in rows)
+    max_y = max(row["mean_drag_ratio"] for row in rows)
+    x_pad = max(0.25, 0.15 * max(max_x - min_x, 1.0))
+    y_pad = max(0.05, 0.15 * max(max_y - min_y, 0.1))
+    min_x -= x_pad
+    max_x += x_pad
+    min_y = max(0.0, min(min_y - y_pad, 1.0))
+    max_y = max(max_y + y_pad, 1.0)
+
+    def x_map(value: float) -> float:
+        return margin_left + (value - min_x) / max(max_x - min_x, 1.0e-9) * plot_w
+
+    def y_map(value: float) -> float:
+        return margin_top + (max_y - value) / max(max_y - min_y, 1.0e-9) * plot_h
+
+    svg = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img">',
+        "<title>Design Freedom Acoustic-Aero Tradeoff</title>",
+        '<rect width="100%" height="100%" fill="#ffffff" />',
+        '<text x="28" y="36" font-family="Arial, sans-serif" font-size="22" fill="#111">Design Freedom: Acoustic Gain vs Drag Cost</text>',
+        '<text x="28" y="56" font-family="Arial, sans-serif" font-size="13" fill="#666">Each point is a freedom level averaged across target seeds. Right is better acoustic improvement; lower is lower drag cost.</text>',
+    ]
+
+    for tick_index in range(6):
+        value = min_x + (max_x - min_x) * tick_index / 5.0
+        x = x_map(value)
+        svg.append(f'<line x1="{x:.1f}" y1="{margin_top}" x2="{x:.1f}" y2="{height - margin_bottom}" stroke="#eeeeee" stroke-width="1" />')
+        svg.append(f'<text x="{x:.1f}" y="{height - margin_bottom + 18}" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">{value:.1f}</text>')
+    for tick_index in range(6):
+        value = min_y + (max_y - min_y) * tick_index / 5.0
+        y = y_map(value)
+        svg.append(f'<line x1="{margin_left}" y1="{y:.1f}" x2="{width - margin_right}" y2="{y:.1f}" stroke="#f3f3f3" stroke-width="1" />')
+        svg.append(f'<text x="{margin_left - 10}" y="{y + 4:.1f}" font-family="Arial, sans-serif" font-size="11" text-anchor="end" fill="#666">{value:.2f}</text>')
+
+    svg.append(f'<line x1="{margin_left}" y1="{y_map(1.0):.1f}" x2="{width - margin_right}" y2="{y_map(1.0):.1f}" stroke="#999999" stroke-width="1.2" stroke-dasharray="4,4" />')
+    for row in rows:
+        x = x_map(row["mean_surrogate_target_rmse_improvement_db"])
+        y = y_map(row["mean_drag_ratio"])
+        svg.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6.5" fill="#2ca02c" opacity="0.9" />')
+        svg.append(f'<text x="{x + 9:.1f}" y="{y - 9:.1f}" font-family="Arial, sans-serif" font-size="10" fill="#444">{row["freedom_level"].replace("_", " ")}</text>')
+
+    svg.append(f'<text x="{margin_left + plot_w / 2:.1f}" y="{height - 16}" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#222">Mean target RMSE improvement vs baseline (dB)</text>')
+    svg.append(f'<text x="22" y="{margin_top + plot_h / 2:.1f}" font-family="Arial, sans-serif" font-size="14" fill="#222" transform="rotate(-90 22 {margin_top + plot_h / 2:.1f})">Mean drag ratio</text>')
+    svg.append("</svg>")
+    return "\n".join(svg)
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -733,7 +935,7 @@ def _directivity_grid_svg(
         cx = col * cell_w + cell_w // 2
         cy = 90 + row_idx * cell_h + cell_h // 2
 
-        target_dir = campaign_dir / r["folder"]
+        target_dir = Path(r.get("target_path") or (campaign_dir / r["folder"]))
         comparison_rows = _read_comparison_rows(target_dir)
 
         mini = _mini_polar(
@@ -775,19 +977,7 @@ def _directivity_grid_svg(
 # CLI entry point
 # ─────────────────────────────────────────────────────────────────────
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Aggregate results from a Generalized Directivity campaign."
-    )
-    parser.add_argument(
-        "--campaign-dir",
-        type=Path,
-        required=True,
-        help="Root directory containing target_xxx/ subdirectories.",
-    )
-    args = parser.parse_args()
-
-    campaign_dir = args.campaign_dir
+def aggregate_campaign_dir(campaign_dir: Path) -> None:
     results = _collect_targets(campaign_dir)
 
     if not results:
@@ -799,6 +989,23 @@ def main() -> None:
     # Write CSV
     csv_path = _write_summary_csv(campaign_dir, results)
     print(f"  Summary CSV: {csv_path}")
+
+    freedom_summary = _freedom_summary(results)
+    if len(freedom_summary) > 1:
+        freedom_csv_path = _write_freedom_summary_csv(campaign_dir, freedom_summary)
+        print(f"  Freedom CSV: {freedom_csv_path}")
+
+        freedom_fit_svg = _freedom_fit_chart_svg(freedom_summary)
+        if freedom_fit_svg:
+            freedom_fit_path = campaign_dir / "campaign_freedom_fit_chart.svg"
+            freedom_fit_path.write_text(freedom_fit_svg, encoding="utf-8")
+            print(f"  Freedom fit: {freedom_fit_path}")
+
+        freedom_tradeoff_svg = _freedom_tradeoff_chart_svg(freedom_summary)
+        if freedom_tradeoff_svg:
+            freedom_tradeoff_path = campaign_dir / "campaign_freedom_tradeoff_chart.svg"
+            freedom_tradeoff_path.write_text(freedom_tradeoff_svg, encoding="utf-8")
+            print(f"  Freedom aero:{freedom_tradeoff_path}")
 
     # MSE bar chart
     bar_svg = _mse_bar_chart_svg(results)
@@ -877,6 +1084,20 @@ def main() -> None:
         print(f"    Mean lift retention:          {sum(lift_retentions) / len(lift_retentions):.3f}")
         print(f"    Mean drag ratio:              {sum(drag_ratios) / len(drag_ratios):.3f}")
         print(f"    Mean lift-to-drag retention:  {sum(ld_retentions) / len(ld_retentions):.3f}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Aggregate results from a Generalized Directivity campaign."
+    )
+    parser.add_argument(
+        "--campaign-dir",
+        type=Path,
+        required=True,
+        help="Root directory containing target_xxx/ subdirectories.",
+    )
+    args = parser.parse_args()
+    aggregate_campaign_dir(args.campaign_dir)
 
 
 if __name__ == "__main__":
