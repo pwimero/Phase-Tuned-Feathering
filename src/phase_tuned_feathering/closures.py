@@ -35,14 +35,15 @@ class ClosureParams:
     """
 
     cq: float = 1.0e-12
-    beta: float = 0.7
+    beta: float = 0.85
     u_c: float | None = None
-    coherence_x: float = 0.30
-    coherence_y: float = 0.30
+    coherence_x: float = 0.90
+    coherence_y: float = 0.90
     coherence_z: float = 0.30
+    coherence_ref_hz: float = 1500.0
     incidence_amplitude_coeff: float = 0.0
     incidence_ref_deg: float = 0.0
-    incidence_delay_per_rad: float = 0.0
+    incidence_delay_per_rad: float = 5.0e-4
     coherence_model: str = "exponential"
     strouhal_scale: float = 0.03
 
@@ -168,15 +169,16 @@ def coherence_value(
     if model == "full":
         magnitude = 1.0
     elif model == "exponential":
-        omega = angular_frequency(frequency_hz)
-        u_c = convection_velocity(flow, closures)
         scales = (
             max(closures.coherence_x, 1.0e-12),
             max(closures.coherence_y, 1.0e-12),
             max(closures.coherence_z, 1.0e-12),
         )
-        distance = sum(abs(point_m[i] - point_n[i]) / scales[i] for i in range(3))
-        magnitude = math.exp(-omega * distance / u_c)
+        normalized_distance = math.sqrt(
+            sum(((point_m[i] - point_n[i]) / scales[i]) ** 2 for i in range(3))
+        )
+        frequency_factor = max(frequency_hz / max(closures.coherence_ref_hz, 1.0e-12), 0.0)
+        magnitude = math.exp(-normalized_distance * frequency_factor)
     else:
         raise ValueError(
             "coherence_model must be one of 'exponential', 'zero', or 'full'."

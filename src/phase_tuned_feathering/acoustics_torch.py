@@ -84,11 +84,15 @@ def evaluate_spp_torch(
             scales = scales.to(device=device, dtype=points.dtype).view(1, 1, 1, 3)
 
         diff = (points.unsqueeze(2) - points.unsqueeze(1)) / scales  # (P, N, N, 3)
-        distance = torch.sum(torch.abs(diff), dim=-1)  # (P, N, N)
+        normalized_distance = torch.sqrt(torch.sum(diff * diff, dim=-1))  # (P, N, N)
         delay_diff = delay.unsqueeze(2) - delay.unsqueeze(1)  # (P, N, N)
 
         if model == "exponential":
-            magnitude = torch.exp(-omega.view(1, F, 1, 1) * distance.unsqueeze(1) / u_c)
+            frequency_factor = (
+                frequencies.view(1, F, 1, 1)
+                / max(closures.coherence_ref_hz, 1.0e-12)
+            )
+            magnitude = torch.exp(-frequency_factor * normalized_distance.unsqueeze(1))
         elif model == "full":
             magnitude = torch.ones((P, F, N, N), dtype=points.dtype, device=device)
         else:
