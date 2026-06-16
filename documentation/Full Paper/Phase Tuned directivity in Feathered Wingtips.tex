@@ -52,64 +52,44 @@
 \maketitle
 
 \begin{abstract}
-Feathered and serrated lifting-surface edges are often discussed as potential acoustic interference devices, but directivity changes can also arise from simpler mechanisms: source-strength redistribution, local dipole-axis rotation, and altered aerodynamic loading. This paper therefore treats feathered-wingtip directivity control as a mechanism-identification problem rather than as a presumed demonstration of broadband phase steering. The study develops a positive-semidefinite stochastic aeroacoustic array framework for feathered geometries, coupled to arbitrary target-directivity optimization and explicit mechanism ablations. Each feather is represented as a distributed stochastic loading-noise source line, and the far-field pressure power spectral density is evaluated using a Hermitian positive-semidefinite cross-spectral matrix, which guarantees non-negative spectra while separating geometry, source autospectra, coherence, local transfer, and incidence-delay closures. A shared geometry model supports acoustic prediction, visualization, surrogate validation, aerodynamic proxy screening, and CAD-oriented source-grid export. The formulation is interpreted through the dimensionless groups $M_\infty$, $kc_{\mathrm{ref}}$, $a_x/c_{\mathrm{ref}}$, $a_y/c_{\mathrm{ref}}$, $a_z/c_{\mathrm{ref}}$, and $\omega b_\alpha\Delta\alpha$, so the conclusions are attached to a regime rather than to one arbitrary dimensional realization. In a 50-target study, the three full-geometry ablations all outperform incidence-only optimization by approximately $1.3\,\mathrm{dB}$ in validated surrogate RMSE, showing that geometry beyond incidence matters materially. However, the \texttt{full}, \texttt{no\_delay}, and \texttt{zero\_coherence} cases remain statistically indistinguishable from one another, so the results support geometry-sensitive directivity control more strongly than a uniquely phase-driven mechanism. Study-wide theory--surrogate comparison yields a calibration RMSE of $2.42\,\mathrm{dB}$ and a held-out validation RMSE of $5.70\,\mathrm{dB}$ for the full model, with errors increasing strongly once $kc_{\mathrm{ref}}$ exceeds approximately 11 (about $2\,\mathrm{kHz}$ for $c_{\mathrm{ref}}=0.30\,\mathrm{m}$). The framework is therefore a normalized low- to mid-frequency directivity-screening and mechanism-comparison tool rather than an absolute high-frequency sound-pressure predictor.
+Feathered wingtip directivity changes are often attributed to broadband phase steering, but they can also arise from source-strength redistribution, local dipole rotation, and altered aerodynamic loading. This study treats feathered-wingtip directivity control as a mechanism-identification problem. We develop a positive-semidefinite stochastic aeroacoustic array framework using a Hermitian cross-spectral matrix to guarantee non-negative pressure spectra while isolating geometry, source strength, coherence, local transfer, and incidence-delay effects. In a 50-target optimization campaign, three full-geometry configurations all outperformed incidence-only control by approximately $1.3\,\mathrm{dB}$ in validated surrogate RMSE. However, the complete model, a no-delay model, and a zero-coherence model were statistically indistinguishable, showing that geometry-sensitive directivity changes are driven primarily by source-strength redistribution and dipole rotation rather than phase interference. Comparison with a separate boundary-layer self-noise surrogate yields a calibration RMSE of $2.42\,\mathrm{dB}$ and a validation RMSE of $5.70\,\mathrm{dB}$, with errors increasing significantly above $kc_{\mathrm{ref}} \approx 11$. The framework serves as a low-to-mid-frequency screening tool for comparing geometry-sensitive directivity mechanisms rather than an absolute high-frequency sound predictor.
 \end{abstract}
 
 \section{Introduction}
 
-Feathered wingtips and feathered trailing-edge assemblies are geometrically structured lifting-surface terminations. Their separated elements, sweep variation, incidence variation, taper, and out-of-plane displacement make them acoustically array-like: different source regions can radiate with different amplitudes, orientations, phases, and degrees of mutual coherence. This has made feathered or serrated morphologies attractive as bio-inspired candidates for acoustic control.
+Structured lifting-surface terminations like feathered wingtips are often modeled as acoustic arrays where spatial spacing, sweep, out-of-plane displacement, and incidence vary across elements. While these features suggest bio-inspired noise control through phase interference, directivity changes can also arise from incoherent source-strength redistribution or dipole axis rotation. Models reporting only overall target-fit improvements cannot distinguish between these mechanisms.
 
-However, a phase-interference explanation is not automatic. A change in far-field directivity can be produced by at least three distinct mechanisms: coherent interference between separated sources, incoherent redistribution of source strength, and rotation of local loading dipoles relative to the observer. These mechanisms can produce similar normalized directivity changes in an optimizer. A model that only reports target-fit improvement therefore cannot establish whether phase tuning is actually the operative mechanism.
+This paper addresses this ambiguity by formulating feathered-wingtip directivity control as a mechanism-identification problem. We establish a positive-semidefinite stochastic array model that allows coherent, partially coherent, and zero-coherence limits to be compared without generating non-physical negative pressure spectra. This enables systematic ablation of geometry, coherence, and phase-delay closures.
 
-The purpose of this paper is to formulate feathered-wingtip directivity control as a controlled mechanism-identification problem. The central object is a positive-semidefinite stochastic array model in which the source cross-spectrum is constructed explicitly. This allows coherent, partially coherent, and zero-coherence limits to be evaluated without producing non-physical negative pressure spectra. It also permits geometry, incidence, coherence, and incidence-delay closures to be switched on and off in a reproducible ablation study.
-
-The main contribution of the study is therefore narrower than a broad claim of ``phase-tuned feather noise control.'' The paper contributes a computational framework for asking whether feathered directivity changes are caused by coherent array effects or by lower-order local loading and projection effects. Within this formulation, the closure defaults are selected so that both geometry-driven coherence effects and incidence-driven local loading effects can influence the objective on the physical scale of the modeled feather assembly, and the resulting conclusions are interpreted through nondimensional regime parameters rather than through the SI-unit realization alone.
-
-The main contributions are:
+The primary contributions of this work are:
 \begin{enumerate}
-    \item a feathered-wingtip geometry parameterization shared by acoustic prediction, visualization, aerodynamic proxy evaluation, surrogate validation, and CAD-oriented source-grid export;
-    \item a positive-semidefinite stochastic cross-spectral formulation for distributed feather-source radiation, ensuring non-negative pressure power spectra for all observer directions and frequencies;
-    \item a target-directivity optimization pipeline for arbitrary smooth directivity patterns, reporting target-fit improvement, mutation magnitude, and baseline-relative aerodynamic proxy metrics;
-    \item a mechanism-ablation study separating incidence-only control, full geometry with zero coherence, full geometry without incidence delay, and the complete closure model;
-    \item a closure parameterization chosen so that coherence decay and incidence-delay effects remain active over the modeled feather separations and operating frequencies, together with a 50-target study showing a repeatable validated-RMSE advantage for full-geometry mutation over incidence-only control, but no statistically significant separation among the three full-geometry ablations.
+    \item A unified geometry parameterization shared across prediction, validation, aerodynamic proxy screening, and CAD export.
+    \item A positive-semidefinite stochastic cross-spectral formulation ensuring non-negative pressure power spectra.
+    \item A target-directivity optimization pipeline for arbitrary smooth radiation patterns.
+    \item A mechanism-ablation study comparing incidence-only control, full geometry with zero coherence, full geometry without incidence delay, and the complete closure model.
+    \item A 50-target optimization campaign showing that full-geometry mutations outperform incidence-only control by $1.3\,\mathrm{dB}$ in validated RMSE, but showing no statistical difference among the three full-geometry ablation levels.
 \end{enumerate}
 
-This framing deliberately avoids three overclaims. First, the results do not prove total acoustic-power reduction, because the objective is normalized target-shape matching. Second, they do not constitute experimental or high-fidelity computational validation, because the comparator is a low-cost surrogate. Third, they do not prove broadband inter-feather phase steering, because the study does not separate the \texttt{full} model from the \texttt{zero\_coherence} and \texttt{no\_delay} limits on final validated RMSE. The paper presents a reproducible aeroacoustic screening and mechanism-isolation framework that shows geometry-sensitive control clearly, while leaving the phase-specific mechanism unresolved under the chosen closures.
+We emphasize that this framework evaluates normalized target-shape matching rather than absolute acoustic power reduction, uses a low-fidelity validation surrogate, and demonstrates geometry-sensitive control rather than proving broadband inter-feather phase steering.
 
-\section{Literature}
+\section{Literature Review}
 
-\subsection{Positioning of the contribution}
+This work builds upon three established research areas: analytical aeroacoustic loading-noise theory, bio-inspired edge-noise control, and acoustic-array optimization. Classical aerodynamic sound theories, including Curle's loading noise extension of Lighthill's analogy~\cite{Curle1955} and Farassat's formulations~\cite{Farassat2007}, describe acoustic radiation from unsteady surface forces. Trailing-edge and self-noise models~\cite{Amiet1976,Howe1978,Brooks1989} establish how turbulent boundary-layer scattering radiates broadband noise. Furthermore, prior studies on serrated edges demonstrate that edge geometry alters directivity and that destructive interference can reduce far-field noise at specific frequencies and angles~\cite{Lyu2016SerratedTE}.
 
-This work sits between three established research areas: analytical aeroacoustic loading-noise theory, serrated or bio-inspired edge-noise control, and acoustic-array directivity optimization. It does not claim novelty in the existence of trailing-edge noise theory, cross-spectral matrices, or interference effects in serrated edges. Those ideas are well established. Instead, the contribution here is the combination of a feathered-wingtip geometry model, a positive-semidefinite stochastic array construction, arbitrary target-directivity optimization, and a four-way mechanism ablation designed to test whether the optimized directivity changes actually require coherent phase mechanisms under a closure set that keeps those mechanisms active.
+Rather than proposing a new acoustic analogy, we implement a closure-based loading-noise surrogate to evaluate relative directivity changes. Because feathered geometries consist of spatially separated, differently oriented source regions, the far-field radiation depends on both local source strength and spatial cross-coherence. While ad-hoc cosine-summed cross-term models can yield non-physical negative power spectral densities (PSDs) under inconsistent coherence closures, we employ a Hermitian positive-semidefinite matrix construction. This formulation guarantees non-negative spectra across all frequencies and observer directions, enabling mathematically consistent comparisons between the zero-coherence, no-delay, and full-coherence limits.
 
-This distinction is important because prior serrated-edge studies already show that edge geometry can modify directivity and that destructive interference can contribute to noise reduction at particular frequencies and observer angles~\cite{Lyu2016SerratedTE}. A claim that feathered wingtips simply use ``phase interference'' would therefore be weakly distinguished from existing serration theory. The claim made here is methodological: the formulation is set up so that coherent phase terms, geometric spacing effects, and incidence-driven local loading effects can all remain active and be separated by ablation, rather than having one mechanism removed implicitly by the default closures.
-
-\subsection{Aeroacoustic loading and trailing-edge models}
-
-Classical aerodynamic sound theory provides the physical context for the model. Curle's extension of Lighthill's analogy describes loading noise generated by unsteady forces on solid boundaries, while FW-H-type acoustic analogy formulations provide routes from unsteady aerodynamic fields to far-field sound~\cite{Curle1955,Farassat2007}. Trailing-edge noise theories and airfoil self-noise models further show how turbulent boundary-layer pressure fluctuations scattered by an edge can radiate broadband sound~\cite{Howe1978,Amiet1976,Brooks1989}. This work does not attempt to replace these theories. Instead, it uses their structure to motivate a compact transfer kernel and a stochastic source representation for a feathered assembly.
-
-The implemented acoustic model is a closure-based loading-noise surrogate. Its transfer kernel, source autospectrum, coherence law, and incidence-delay law require calibration before absolute sound-pressure-level claims can be made. Without such calibration, the model supports relative comparisons between geometries under a fixed set of assumptions. This is why the reported study emphasizes normalized directivity-shape improvement and mechanism separation rather than absolute acoustic certification.
-
-\subsection{Array interpretation of distributed aeroacoustic sources}
-
-Feathered geometries are naturally array-like: they contain multiple source regions separated in space and oriented differently. In coherent or partially coherent conditions, the far-field directivity depends not only on source strength but also on phase differences and cross-spectral relationships between source regions. This motivates a cross-spectral representation in which pressure power spectral density is computed as a quadratic form. Such a form is essential because pressure spectra must remain non-negative for all observer directions and frequencies.
-
-The positive-semidefinite source cross-spectrum is a central methodological constraint and one of the main transferable elements of the paper. A cosine-summed cross-term model can produce negative spectral densities if the source coherence closure is inconsistent. A Hermitian positive-semidefinite matrix construction avoids this failure mode and makes the zero-coherence, no-delay, and full-coherence limits directly comparable. In this study, that comparability is what allows the geometry-sensitive coherence and incidence-delay closures to be activated without sacrificing mathematical validity.
-
-\subsection{Low-order aerodynamic screening}
-
-Fast aerodynamic tools and thin-airfoil-style models are useful for screening incidence ranges, Reynolds-number scales, and approximate lift/drag trends. They are not aeroacoustic validation tools. In this project, low-order aerodynamic quantities are used only as relative performance proxies: lift retention, drag ratio, lift-to-drag retention, separation burden, and spanwise lift-distribution variation. These quantities indicate the aerodynamic cost of directivity-focused geometry mutation, but they should not be presented as experimentally validated aerodynamic coefficients.
+Finally, we utilize thin-airfoil lift and drag proxies as relative screening metrics. These proxies estimate the aerodynamic penalties associated with directivity-optimized mutations without asserting absolute aerodynamic performance.
 
 \section{Methodology}
 
-\subsection{Physical assumptions}
+\subsection{Physical assumptions and geometry representation}
 
-The model assumes linear, subsonic, far-field acoustics in a uniform medium with density $\rho_0$, sound speed $c_0$, free-stream speed $U_\infty$, and Mach number
+We assume linear, subsonic, far-field acoustics in a uniform medium with density $\rho_0$, sound speed $c_0$, free-stream speed $U_\infty$, and Mach number
 \begin{equation}
     M_\infty = \frac{U_\infty}{c_0}.
 \label{eq:mach}
 \end{equation}
-The observer direction is
+The observer direction is defined by the unit vector:
 \begin{equation}
     \vect{n} =
     \begin{bmatrix}
@@ -118,14 +98,9 @@ The observer direction is
     \qquad
     \|\vect{n}\| = 1.
 \end{equation}
+Feathers are modeled as rigid geometries represented by distributed stochastic loading-noise source lines. Structural vibrations, compliance, and porosity are neglected.
 
-Each feather is treated as a rigid prescribed geometry. Porosity, compliance, flutter, structural vibration, and detailed separated-flow dynamics are not resolved. The primary source model is a distributed stochastic loading-noise source line. This makes the framework suitable for testing phase, spacing, incidence, and curvature effects before adding more detailed feather physics.
-
-\subsection{Geometry parameterization}
-
-The research coordinate system uses $x$ as streamwise direction, $y$ as spanwise direction, and $z$ as vertical or wing-normal direction. The CAD coordinate convention is mapped internally so that the same parameter set can generate source grids and CAD-compatible geometry metadata.
-
-For feather $i$, the nondimensional source coordinate is $\eta\in[0,1]$. The acoustic source point is
+For feather $i$, the coordinate $\eta \in [0, 1]$ parameterizes the source point:
 \begin{equation}
     \vect{r}_i(\eta;\vect{\mu}) =
     \begin{bmatrix}
@@ -135,39 +110,34 @@ For feather $i$, the nondimensional source coordinate is $\eta\in[0,1]$. The aco
     \end{bmatrix},
 \label{eq:source_position}
 \end{equation}
-where $\vect{\mu}$ is the design vector. The physical line element is
+where $\vect{\mu}$ is the design vector. The arc length element is $\dd s_i = J_i(\eta)\dd\eta$, with Jacobian:
 \begin{equation}
-    \dd s_i = J_i(\eta)\dd\eta,
-    \qquad
     J_i(\eta)=
     \left\|
         \frac{\partial\vect{r}_i}{\partial\eta}
     \right\|.
 \end{equation}
-The implementation estimates $J_i$ by finite differences and applies trapezoidal quadrature along each feather.
+We estimate $J_i$ via finite differences and apply trapezoidal quadrature. 
 
-Each feather has a local chord $c_i(\eta)$, incidence angle, root position, sweep offset, vertical curvature offset, and taper limit. Across feather index, root vertical translation, tip sweep, and tip vertical curvature use endpoint and midpoint controls. For a normalized feather-family coordinate $s\in[0,1]$, a generic cross-feather quantity $g$ is represented by a quadratic profile
+Root vertical translation, tip sweep, and tip vertical curvature across the feathers $s \in [0, 1]$ are parameterized by quadratic profiles:
 \begin{equation}
     g(s)=g_1L_1(s)+g_mL_m(s)+g_7L_7(s),
 \end{equation}
-where $g_1$, $g_m$, and $g_7$ are first-feather, midpoint, and seventh-feather controls. If the midpoint control is unset, it defaults to the mean of the endpoint values, recovering the original linear trend.
-
-The seven feather incidence values are optimized through an orthonormal cosine-basis representation:
+where $g_1$, $g_m$, and $g_7$ represent control points for the first, middle, and seventh feathers. The seven feather incidence values $\alpha_i$ are represented in an orthonormal cosine basis:
 \begin{equation}
     \alpha_i =
     \sum_{m=0}^{N-1}
     B_{im}a_m,
 \label{eq:incidence_basis}
 \end{equation}
-where $a_m$ are incidence shape coefficients and $B_{im}$ is a full-rank basis over feather index. Since the basis is full rank, all seven-feather incidence patterns remain representable, but smooth incidence trends are easier for the optimizer to discover.
+where $a_m$ are incidence coefficients and $B_{im}$ is a full-rank basis.
 
-\subsection{Three-level acoustic model hierarchy}
+\subsection{Acoustic model hierarchy}
 
-The theoretical formulation is built in three levels. Level 1 establishes the compact coherent array limit, Level 2 introduces distributed source lines along each feather, and Level 3 replaces deterministic source amplitudes with a positive-semidefinite stochastic cross-spectral model. This hierarchy is useful because each level exposes a separate physical assumption: compactness, spatial distribution, and stochastic coherence.
+We formulate the aeroacoustic model in three levels to isolate physical assumptions of compactness, spatial distribution, and coherence.
 
 \subsubsection{Level 1: compact coherent feather array}
-
-The simplest model treats each feather as one compact acoustic element located at an effective source position $\vect{r}_i$. For observer direction $\vect{n}$ and angular frequency $\omega$, the far-field pressure is
+Each feather is treated as a compact source at $\vect{r}_i$. For observer direction $\vect{n}$ and frequency $\omega$, the far-field pressure and deterministic power are:
 \begin{equation}
     p_1(\vect{n},\omega)
     =
@@ -179,12 +149,9 @@ The simplest model treats each feather as one compact acoustic element located a
         \ii k\vect{n}\cdot\vect{r}_i
     \right],
     \qquad
-    k=\frac{\omega}{c_0}.
+    k=\frac{\omega}{c_0},
 \label{eq:compact_array_pressure}
 \end{equation}
-Here $q_i(\omega)$ is the complex source amplitude of feather $i$, and $A_i$ collects loading direction, local transfer, and any compact-source scaling. This level shows the basic phase-tuning mechanism: changing feather positions or incidence-dependent phase changes the relative phases of the summed terms and therefore changes directivity.
-
-If the compact source amplitudes are deterministic, the pressure power is
 \begin{equation}
     |p_1(\vect{n},\omega)|^2
     =
@@ -195,13 +162,12 @@ If the compact source amplitudes are deterministic, the pressure power is
         \exp\left[
             \ii k\vect{n}\cdot\vect{r}_i
         \right]
-    \right|^2.
+    \right|^2,
 \end{equation}
-This compact model is not the final model, but it provides the array-theory limit that the distributed formulation must recover when each feather is acoustically compact.
+where $q_i(\omega)$ is the complex source amplitude, and $A_i$ accounts for local loading and transfer.
 
 \subsubsection{Level 2: deterministic distributed source lines}
-
-Level 2 resolves each feather as a source line parameterized by $\eta\in[0,1]$. The compact source amplitude $q_i$ is replaced by a distributed source amplitude $q_i(\eta,\omega)$, and the effective source position becomes $\vect{r}_i(\eta)$. The far-field pressure is
+To account for spatial distribution, we integrate along each feather's source line:
 \begin{equation}
     p_2(\vect{n},\omega)
     =
@@ -213,16 +179,13 @@ Level 2 resolves each feather as a source line parameterized by $\eta\in[0,1]$. 
     \exp\left[
         \ii k\vect{n}\cdot\vect{r}_i(\eta)
     \right]
-    J_i(\eta)\dd\eta.
+    J_i(\eta)\dd\eta,
 \label{eq:distributed_pressure}
 \end{equation}
-The transfer factor $H_i$ includes loading direction and observer-dependent acoustic transfer, while $J_i(\eta)$ converts the nondimensional coordinate to physical arc length. In the compact limit, if $q_i(\eta,\omega)$ and $H_i(\eta,\vect{n},\omega)$ vary slowly over the feather and $\vect{r}_i(\eta)$ can be replaced by an effective position, Level 2 reduces to Level 1.
-
-The deterministic distributed model is useful for checking quadrature convergence and pure phase effects. It is still insufficient for broadband turbulent loading noise because turbulent sources are not phase-locked deterministic amplitudes.
+where $H_i$ collects loading direction and propagation transfer. 
 
 \subsubsection{Level 3: stochastic cross-spectral model}
-
-Level 3 treats the distributed sources as stochastic quantities. The continuous source cross-spectrum is
+To represent turbulent loading noise, we define the source cross-spectrum:
 \begin{equation}
     \Phi_{qq}^{ij}(\eta,\eta',\omega)
     =
@@ -231,7 +194,7 @@ Level 3 treats the distributed sources as stochastic quantities. The continuous 
     \right].
 \label{eq:continuous_cross_spectrum}
 \end{equation}
-Substituting the distributed pressure expression into the second-order pressure spectrum gives
+The far-field pressure power spectral density (PSD) becomes:
 \begin{align}
     \label{eq:continuous_psd}
     S_{pp}(\vect{n},\omega)
@@ -254,11 +217,8 @@ Substituting the distributed pressure expression into the second-order pressure 
     \right]
     J_i(\eta)J_j(\eta')\dd\eta\dd\eta'.
 \end{align}
-This is the primary theoretical model used by the paper. It preserves the phase and geometry structure of Level 2 while allowing partial coherence, zero coherence, and full coherence as limiting cases.
 
-\subsubsection{Discretized positive-semidefinite form}
-
-After quadrature, all source points are collected into a vector of length $M$. The pressure spectrum is evaluated as
+Discretizing the quadrature yields the quadratic form:
 \begin{equation}
     S_{pp}(\vect{n},\omega)
     =
@@ -268,7 +228,7 @@ After quadrature, all source points are collected into a vector of length $M$. T
     \vect{a}(\vect{n},\omega),
 \label{eq:discrete_psd}
 \end{equation}
-where $\vect{a}$ contains transfer, loading direction, propagation phase, and quadrature weights. The source cross-spectral matrix is
+where $\vect{a}$ aggregates transfer factors, loading orientation, phase, and weights. The source cross-spectral matrix is:
 \begin{equation}
     \mat{C}_q(\omega)
     =
@@ -276,19 +236,19 @@ where $\vect{a}$ contains transfer, loading direction, propagation phase, and qu
         \vect{q}(\omega)\vect{q}^H(\omega)
     \right].
 \end{equation}
-If $\mat{C}_q=\mat{C}_q^H$ and $\mat{C}_q\succeq0$, then $S_{pp}\geq0$ for every observer and frequency. This is why the implementation constructs source cross-spectra through a Hermitian positive-semidefinite matrix rather than through unconstrained cosine cross terms.
+By constructing $\mat{C}_q$ as Hermitian positive-semidefinite ($\mat{C}_q \succeq 0$), we mathematically guarantee non-negative pressure spectra ($S_{pp} \geq 0$) for all observer angles and frequencies.
 
-\subsection{Closure models}
+\subsection{Closure models and nondimensional regime}
 
-The source cross-spectrum is constructed from autospectra and complex coherence:
+The source cross-spectral matrix is closed using:
 \begin{equation}
     C_{q,mn}(\omega)
     =
     \sqrt{\Phi_m(\omega)\Phi_n(\omega)}
-    \Gamma_{mn}(\omega).
+    \Gamma_{mn}(\omega),
 \label{eq:source_cross_spectrum}
 \end{equation}
-The source autospectrum is
+where the source autospectrum is:
 \begin{equation}
     \Phi_m(\omega)
     =
@@ -297,25 +257,23 @@ The source autospectrum is
     F_\alpha(\alpha_m),
 \label{eq:source_autospectrum}
 \end{equation}
-with
+with:
 \begin{equation}
     \chi_m=\frac{\omega c_m S_t}{U_c},
     \qquad
     U_c=\beta U_\infty,
 \end{equation}
-and
 \begin{equation}
     F_\chi(\chi)=
-    \frac{\chi^2}{(1+\chi^2)^{7/3}}.
+    \frac{\chi^2}{(1+\chi^2)^{7/3}},
 \end{equation}
-The incidence-amplitude closure is
 \begin{equation}
     F_\alpha(\alpha_m)
     =
     1+a_\alpha(\alpha_m-\alpha_{\mathrm{ref}})^2.
 \end{equation}
 
-The coherence magnitude is modeled as
+The spatial coherence magnitude and incidence-dependent phase delay are modeled as:
 \begin{equation}
     |\Gamma_{mn}(\omega)|
     =
@@ -328,17 +286,15 @@ The coherence magnitude is modeled as
             +
             \left(\frac{\Delta z_{mn}}{a_z}\right)^2
         }
-    \right].
+    \right],
 \label{eq:coherence_magnitude}
 \end{equation}
-An incidence-dependent delay is represented by
 \begin{equation}
     \tau_\alpha(\alpha_m)
     =
     b_\alpha(\alpha_m-\alpha_{\mathrm{ref}}),
 \label{eq:incidence_delay}
 \end{equation}
-so that
 \begin{equation}
     \Gamma_{mn}(\omega)
     =
@@ -351,16 +307,9 @@ so that
     \right].
 \label{eq:complex_coherence}
 \end{equation}
+The baseline closures ($a_x=a_y=0.9\,\mathrm{m}$, $a_z=0.3\,\mathrm{m}$, $f_{\mathrm{ref}}=1500\,\mathrm{Hz}$, $\beta=0.85$, and $b_\alpha=5.0\times 10^{-4}\,\mathrm{s\,rad^{-1}}$) ensure neighboring feathers remain partially coherent at low-to-mid frequencies while maintaining active phase shifts.
 
-The closure defaults are selected from the scale of the modeled assembly. Baseline adjacent-feather source-point separations are on the order of $0.2$--$0.7\,\mathrm{m}$, so coherence lengths of order $a_x=a_y=0.9\,\mathrm{m}$ and $a_z=0.3\,\mathrm{m}$ keep neighboring feathers partially coherent at low and mid frequencies while still allowing high-frequency decorrelation. A reference frequency of $f_{\mathrm{ref}}=1500\,\mathrm{Hz}$ is used so that coherence decays progressively across the analyzed frequency band instead of collapsing almost immediately. The convection factor is set to $\beta=0.85$, keeping the effective convective speed within a plausible subsonic range while avoiding an unnecessarily compressed Strouhal mapping. Finally, the incidence-delay coefficient is set to a nonzero value, $b_\alpha=5.0\times10^{-4}\,\mathrm{s\,rad^{-1}}$, so that the \texttt{full} and \texttt{no\_delay} ablations differ through an active phase term. These choices do not claim calibration to experiment; they are modeling decisions made to ensure that the full mathematical scope of the formulation is exercised in the study.
-
-\subsection{Nondimensional regime interpretation}
-
-Although the implementation uses SI units, the more transferable description of the modeled case is through nondimensional groups. Using the baseline center-wing chord as reference length,
-\begin{equation}
-    c_{\mathrm{ref}} = 0.30\,\mathrm{m},
-\end{equation}
-define
+We analyze the system using the center-wing chord $c_{\mathrm{ref}} = 0.30\,\mathrm{m}$ to define nondimensional groups:
 \begin{equation}
     \tilde{\vect{r}}=\frac{\vect{r}}{c_{\mathrm{ref}}},
     \qquad
@@ -371,7 +320,7 @@ define
     \Pi_\alpha = \frac{U_\infty b_\alpha}{c_{\mathrm{ref}}}.
 \label{eq:nondim_groups}
 \end{equation}
-The coherence decay is then governed by the dimensionless separation
+The coherence decay is governed by the dimensionless separation:
 \begin{equation}
     \tilde{d}_{mn}
     =
@@ -384,7 +333,7 @@ The coherence decay is then governed by the dimensionless separation
     },
 \label{eq:nondim_coherence_distance}
 \end{equation}
-while the incidence-delay mechanism enters through the phase group
+and the delay phase group:
 \begin{equation}
     \Theta_{mn}
     =
@@ -411,9 +360,7 @@ Baseline coherence distance & $\tilde d_{\mathrm{nn}}$ & $0.264$--$0.924$ (media
 \end{tabular}
 \end{table}
 
-For the baseline geometry, the median nearest-neighbor coherence magnitude is approximately $0.92$ at $250\,\mathrm{Hz}$, $0.73$ at $1000\,\mathrm{Hz}$, $0.28$ at $4000\,\mathrm{Hz}$, and $0.08$ at $8000\,\mathrm{Hz}$. The reported results should therefore be read as applying to a regime in which neighboring feathers remain partially coherent at low and mid frequencies and decorrelate rapidly toward the upper end of the band, rather than as a claim about one arbitrary dimensional case.
-
-The transfer weight for source point $m$ is
+The transfer weight for source point $m$ is:
 \begin{equation}
     a_m(\vect{n},\omega)
     =
@@ -428,18 +375,16 @@ The transfer weight for source point $m$ is
     \right],
 \label{eq:transfer_weight}
 \end{equation}
-with implemented kernel
+with kernel:
 \begin{equation}
     K_H(\vect{n},\omega)
     =
     \frac{\omega/c_0}{(1-M_\infty n_x)^2}.
 \end{equation}
 
-\subsection{Surrogate aeroacoustic validation}
+\subsection{Surrogate validation, target fit, and aerodynamic proxies}
 
-The optimized geometry is evaluated against a separate low-cost surrogate simulator. The theoretical model used by the optimizer and the simulator used for validation are intentionally not identical. The theoretical model uses the positive-semidefinite cross-spectral formulation above, with compact closure laws for source autospectra, coherence, transfer weighting, and incidence delay. The surrogate simulator uses the same geometry and observer definitions, but it replaces the optimizer's source-amplitude closure with BPM/TNO-inspired components: turbulent-boundary-layer trailing-edge contribution, separated-flow contribution, bluntness contribution, and a tip-vortex contribution. Each component uses a log-Gaussian spectral shape in a Strouhal-like variable.
-
-The local aerodynamic state for each source segment uses a thin-airfoil lift proxy with soft stall attenuation:
+We validate optimized geometries using a separate boundary-layer self-noise surrogate simulator. This simulator uses BPM/TNO-inspired spectral closures (trailing-edge, separation, bluntness, and tip-vortex contributions) rather than the optimizer's compact loading-noise closures. The local aerodynamic state relies on a thin-airfoil lift proxy with soft stall:
 \begin{equation}
     C_l =
     2\pi\alpha
@@ -451,16 +396,9 @@ The local aerodynamic state for each source segment uses a thin-airfoil lift pro
     \right]^{-1},
 \label{eq:lift_proxy}
 \end{equation}
-and a drag proxy
-\begin{equation}
-    C_d =
-    C_{d0}+k_dC_l^2.
-\end{equation}
-The surrogate is not high-fidelity CFD and is not experimental validation. Its role is to provide an independent, internally consistent comparison layer. Agreement between the theoretical prediction and the surrogate simulation tests whether the geometry-to-directivity mechanism transfers across two different source closures. In this sense, theory--surrogate agreement supports the internal reliability of the formulation, but it does not prove absolute aeroacoustic accuracy against physical data.
+and drag coefficient $C_d = C_{d0}+k_dC_l^2$.
 
-\subsection{Target generation and fit metrics}
-
-Each arbitrary target directivity pattern is generated from one to three smooth lobes on the observer sphere:
+Target directivity patterns $T_o$ are generated with $N_\ell = 1, 2,$ or $3$ smooth lobes:
 \begin{equation}
     T_o =
     \sum_{\ell=1}^{N_\ell}
@@ -470,17 +408,7 @@ Each arbitrary target directivity pattern is generated from one to three smooth 
     \right]^{p_\ell}.
 \label{eq:target_generation}
 \end{equation}
-The target is peak normalized in decibels:
-\begin{equation}
-    T_o^{\dB}
-    =
-    10\log_{10}
-    \left(
-        \frac{T_o}{\max_o T_o}
-    \right).
-\end{equation}
-
-For a candidate geometry, the predicted directivity is also peak normalized. The optimizer minimizes
+The optimizer minimizes the mean-squared error of peak-normalized directivities:
 \begin{equation}
     J_{\mathrm{fit}}
     =
@@ -493,7 +421,7 @@ For a candidate geometry, the predicted directivity is also peak normalized. The
     \right)^2.
 \label{eq:fit_objective}
 \end{equation}
-This value is used internally by the optimizer, but the paper reports more interpretable target-fit metrics:
+We report target-fit and direction errors:
 \begin{align}
     \label{eq:fit_metrics}
     E_{\mathrm{RMSE}}
@@ -511,9 +439,8 @@ This value is used internally by the optimizer, but the paper reports more inter
     \sum_{o=1}^{N_o}
     \left|
         \hat{S}_o^{\dB}-\hat{T}_o^{\dB}
-    \right|.
+    \right|,
 \end{align}
-Peak-direction error is also reported:
 \begin{equation}
     E_{\mathrm{peak}}
     =
@@ -525,121 +452,52 @@ Peak-direction error is also reported:
     \right).
 \end{equation}
 
-\subsection{Aerodynamic tradeoff metrics}
-
-The aerodynamic cost of mutation is evaluated relative to the reference feathered geometry. For each source segment $m$, define
-\begin{equation}
-    A_m^*=c_m\Delta s_m.
-\end{equation}
-Integrated lift and drag proxies are
+Aerodynamic performance is tracked using integrated lift and drag proxies:
 \begin{align}
     \label{eq:aero_proxies}
     L^*
     &=
     \sum_m
     \frac{1}{2}\rho_0U_\infty^2
-    C_{l,m}A_m^*,\\
+    C_{l,m}c_m\Delta s_m,\\
     D^*
     &=
     \sum_m
     \frac{1}{2}\rho_0U_\infty^2
-    C_{d,m}A_m^*.
+    C_{d,m}c_m\Delta s_m,
 \end{align}
-The lift-to-drag proxy is
-\begin{equation}
-    \left(\frac{L}{D}\right)^*
-    =
-    \frac{L^*}{D^*}.
-\end{equation}
-The reported baseline-relative quantities are
-\begin{align}
-    R_L &= \frac{L^*_{\mathrm{opt}}}{L^*_{\mathrm{base}}},\\
-    R_D &= \frac{D^*_{\mathrm{opt}}}{D^*_{\mathrm{base}}},\\
-    R_{L/D} &=
-    \frac{(L/D)^*_{\mathrm{opt}}}{(L/D)^*_{\mathrm{base}}}.
-\end{align}
-These are treated as signed quantities because large incidence mutations can reverse the integrated lift proxy.
+and the ratio $(L/D)^* = L^*/D^*$. Baseline-relative retention ratios $R_L$, $R_D$, and $R_{L/D}$ measure the aerodynamic impact of structural mutations.
 
-\subsection{Mechanism ablation study}
+\subsection{Mechanism ablation and optimization campaign}
 
-To isolate the contributions of specific physical mechanisms to far-field directivity shaping, we formulate a mechanism ablation study comprising four distinct optimization configurations. Each target directivity pattern in the study is optimized from scratch under all four configurations, allowing a direct comparison of their performance:
+We isolate acoustic mechanisms by optimizing each target under four distinct configurations:
 \begin{enumerate}
-    \item \textbf{Incidence only} (\texttt{incidence}): Only the 7 incidence shape coefficients are optimized, while the spatial position, spacing, sweep, curvature, and taper of the feathers are fully locked to their baseline values. This isolates the steering contribution of pure chordwise camber-tuning.
-    \item \textbf{Full geometry, zero coherence} (\texttt{zero\_coherence}): The full 18-variable design vector is optimized, but the acoustic cross-spectral density matrix is forced to be diagonal (i.e., $\Gamma_{mn} = \delta_{mn}$), representing completely uncorrelated source regions. This isolates the role of spatial shielding and loading projection changes from coherent phase-tuning.
-    \item \textbf{Full geometry, no delay} (\texttt{no\_delay}): The full 18-variable design vector is optimized, but the local incidence-dependent acoustic delay is forced to zero (i.e., $\tau_\alpha = 0$), keeping the spatial and coherence elements active but neutralizing local aerodynamic phase delays.
-    \item \textbf{Full model} (\texttt{full}): The full 18-variable design vector is optimized under the complete theoretical acoustic model, combining spatial positioning, out-of-plane curvature, coherent array tuning, and local incidence-dependent delays.
+    \item \textbf{Incidence only} (\texttt{incidence}): Spatial parameters are fixed; only the 7 incidence coefficients are optimized.
+    \item \textbf{Full geometry, zero coherence} (\texttt{zero\_coherence}): The full 18-variable vector is optimized, but $\Gamma_{mn} = \delta_{mn}$, disabling coherent phase-steering.
+    \item \textbf{Full geometry, no delay} (\texttt{no\_delay}): The full 18-variable vector is optimized, but $\tau_\alpha = 0$, disabling incidence-delay phase shifts.
+    \item \textbf{Full model} (\texttt{full}): The full 18-variable design space is optimized under the complete model.
 \end{enumerate}
-This independent, multi-level formulation allows the comparative analysis to systematically distinguish between geometric steering, coherent interference, and local aerodynamic delay tuning.
 
-\subsection{Optimization and numerical implementation}
-
-The genetic optimizer searches an 18-variable design vector. Seven variables are incidence shape coefficients. The remaining variables control feather spacing, endpoint and midpoint root vertical translations, endpoint and midpoint tip sweep, endpoint and midpoint tip vertical curvature, and minimum tip-chord scale.
-
-% We removed the warm-starting chain between levels to make the ablation studies truly independent.
-Optimization uses a differential-evolution-style population search. The population size is
+The genetic optimizer searches the 18 design variables using a differential-evolution population of size:
 \begin{equation}
     P=N_pN_\mu,
 \label{eq:population_size}
 \end{equation}
-where $N_p$ is the population multiplier and $N_\mu$ is the number of design variables. Candidate mutation uses three distinct parent vectors and a random mutation factor. Trial vectors replace existing vectors only when they improve the objective. The default stopping rule is patience based: optimization stops after a specified number of generations without improvement.
+where $N_\mu = 18$ and $N_p$ is the multiplier. Candidates are penalized for physical source-line intersections. We employ a two-stage evaluation: candidates are screened on a coarse grid, and the top fraction is evaluated at full resolution.
 
-The only direct geometry penalty is projected source-line intersection. Candidate source lines are checked on a coarse source grid; intersections receive a large penalty. This keeps the search broad while preventing self-crossing geometries that cannot be interpreted cleanly.
-
-Each generation is evaluated in two stages. All candidates are first scored on a coarse acoustic grid with reduced source quadrature, strided observers, and strided frequencies. The best fraction is then re-evaluated at the full genetic-algorithm resolution. Final surrogate validation is separate from the genetic search and uses a denser observer grid and broader frequency set:
-\begin{equation}
-    f\in\{250,500,1000,2000,4000,8000\}\ \mathrm{Hz}.
-\end{equation}
-
-The implementation is organized as a Python research package. The core modules are:
-\begin{itemize}
-    \item \texttt{geometry}, \texttt{closures}, \texttt{acoustics}, and \texttt{acoustics\_torch};
-    \item \texttt{simulation}, \texttt{ga\_optimization}, and \texttt{pipeline\_ga};
-    \item summary aggregation and visualization utilities.
-\end{itemize}
-The PyTorch acoustic path is heavily optimized for hardware-accelerated batch execution on modern graphics processing units, including Apple Metal Performance Shaders (MPS). Rather than explicitly constructing and allocating the full four-dimensional cross-spectral density matrix $\mat{C}_q(\omega)$ of size $(P, F, N, N)$—which incurs severe memory bandwidth and allocation penalties—the implementation pre-scales the observer-side transfer weights $\vect{a}_m$ directly by the source autospectrum square root $\sqrt{\Phi_m}$. This mathematically exact refactoring reduces the memory footprint from quadratic in the source grid size ($O(N^2)$) to linear ($O(NO)$), where the number of observer directions $O$ is typically much smaller than $N$.
-
-Furthermore, high-overhead tensor contraction operations (\texttt{torch.einsum}) are replaced with native batched matrix-matrix multiplications ($\vect{K}_H @ \vect{n}^T$ and $\vect{r} @ \vect{n}^T$), which map directly to Apple Silicon's hardware matrix acceleration units (AMX/MPS). For the \texttt{zero\_coherence} ablation level, the diagonal cross-spectral matrix formulation enables a specialized fast path that completely bypasses spatial distance calculations and matrix multiplications, evaluating far-field pressure power as a simple element-wise square-and-sum of scaled transfer weights:
-\begin{equation}
-    S_{pp}(\vect{n},\omega) = \sum_{m} \left( |a_{m,\mathrm{real}}|^2 + |a_{m,\mathrm{imag}}|^2 \right),
-\end{equation}
-which accelerates optimization steps by orders of magnitude. Geometry generation and intersection checks remain CPU-side, while batched acoustic evaluation is performed on the device.
-
-\subsection{Saved artifacts and reproducibility}
-
-Each target run is saved in a separate directory. The important artifacts are:
-\begin{itemize}
-    \item \texttt{ga\_stats.json}, \texttt{target\_definition.json}, and \texttt{optimized\_geometry.json};
-    \item \texttt{source\_grid.csv}, \texttt{surrogate\_simulation.csv}, and \texttt{theory\_vs\_simulation.csv};
-    \item \texttt{validation\_summary.json} and \texttt{target\_fit\_summary.json}.
-\end{itemize}
-The summary aggregator reads these files to regenerate tables and figures without rerunning the optimization or surrogate simulation.
-
-For publication, the reproducibility package should include the code version, target seed list, environment information, all per-target artifacts, and generated figures.
+To accelerate the genetic search, the PyTorch acoustic path refactors the CSD matrix projection to scale transfer weights $\vect{a}_m$ directly by $\sqrt{\Phi_m}$. This changes the memory footprint from $O(N^2)$ to $O(N)$, and maps tensor contractions to hardware matrix units (AMX/MPS). For the \texttt{zero\_coherence} ablation, a specialized fast path skips distance and matrix calculations entirely, evaluating far-field pressure power as $S_{pp}(\vect{n},\omega) = \sum_{m} |a_{m}|^2$.
 
 \subsection{Statistical analysis}
 
-The mechanism comparison is a paired repeated-target design. Each random target seed is solved under all four mechanism conditions, so cross-ablation inference is based on matched per-seed differences rather than on unpaired group means. For any response variable $y$ and any pair of mechanism levels $A$ and $B$, the paired contrast for seed $s$ is
-\begin{equation}
-    d_s^{(A,B)} = y_s^{(A)} - y_s^{(B)}.
-\end{equation}
-The reported mean paired effect is $\bar d = n^{-1}\sum_{s=1}^{n} d_s$, and the corresponding 95\% confidence interval is the Student-$t$ interval
-\begin{equation}
-    \bar d \pm t_{0.975,n-1}\frac{s_d}{\sqrt{n}},
-\end{equation}
-where $s_d$ is the sample standard deviation of the paired differences. All reported $p$-values for mechanism-level pairwise contrasts come from two-sided paired Student-$t$ tests on the same seed-matched differences.
-
-The primary inferential response is final validated surrogate target-shape RMSE, because each mechanism level changes the theoretical baseline and therefore makes within-model improvement a weaker basis for cross-ablation comparison. Drag ratio and lift-to-drag retention are analyzed in the same paired way as secondary aerodynamic-proxy responses. Within each response family (validated RMSE, drag ratio, and lift-to-drag retention), the six pairwise mechanism contrasts reported in the main text and appendix use Holm-adjusted $p$-values to control family-wise error. The target-class tables are reported descriptively using paired means and 95\% confidence intervals only.
-
+We perform a paired repeated-target analysis across 50 random target seeds. Pairwise contrasts $d_s^{(A,B)} = y_s^{(A)} - y_s^{(B)}$ for response variables $y$ (validated RMSE, drag ratio, and $L/D$ retention) are evaluated using two-sided paired Student-$t$ tests. Family-wise error rates are controlled using Holm-adjusted $p$-values.
 
 \section{Results}
 
-This section reports the completed generalized-directivity study. The study used 50 randomly generated target directivity patterns, with seeds 1--50 and one-, two-, or three-lobe target classes. Each target was optimized under four mechanism settings: \emph{Incidence-only} ($\mathtt{incidence}$), \emph{Full geometry with zero coherence} ($\mathtt{zero\_coherence}$), \emph{Full geometry with no incidence-delay closure} ($\mathtt{no\_delay}$), and the \emph{Full model} ($\mathtt{full}$). Thus, the study contains 200 optimization runs.
+Our 50-target optimization campaign (200 total runs across four configurations) shows that directivity control depends significantly on geometric configuration. We compare performance using final validated surrogate RMSE to avoid baseline biases across configurations.
 
-Because each ablation changes the theoretical baseline directivity, within-ablation improvement metrics are not the cleanest basis for between-ablation comparisons. Cross-ablation conclusions are therefore drawn primarily from the final validated surrogate target-shape RMSE on the same targets. Improvement relative to baseline is used only when discussing a single ablation family, especially the full model.
+\subsection{Acoustic performance and mechanism ablation}
 
-\subsection{Study-wide acoustic performance}
-
-Under the full model, the mean baseline target RMSE decreases from $14.60\pm1.48\,\mathrm{dB}$ to a mean validated surrogate RMSE of $9.16\pm2.40\,\mathrm{dB}$, with a mean within-model improvement of $5.44\pm1.59\,\mathrm{dB}$. All 50 full-model targets improve relative to their own full-model baseline, 49 improve by more than $2\,\mathrm{dB}$, and 31 improve by more than $5\,\mathrm{dB}$. Figure~\ref{fig:campaign_target_fit} shows the target-fit reduction across the full study, while Figure~\ref{fig:campaign_directivity} shows representative directivity patterns.
+Under the full model, target RMSE decreases from $14.60\pm1.48\,\mathrm{dB}$ (baseline) to $9.16\pm2.40\,\mathrm{dB}$ (validated surrogate), showing a mean within-model improvement of $5.44\pm1.59\,\mathrm{dB}$ (Figs.~\ref{fig:campaign_target_fit} and~\ref{fig:campaign_directivity}).
 
 \begin{figure}[htbp]
     \centering
@@ -655,11 +513,7 @@ Under the full model, the mean baseline target RMSE decreases from $14.60\pm1.48
     \label{fig:campaign_directivity}
 \end{figure}
 
-\subsection{Mechanism ablation}
-
-Table~\ref{tab:campaign_results} summarizes the study by mechanism condition. Full-geometry mutation provides a clear advantage over incidence-only optimization. Relative to \texttt{incidence}, the mean paired validated-RMSE reduction is $1.30\,\mathrm{dB}$ for \texttt{full}, $1.34\,\mathrm{dB}$ for \texttt{no\_delay}, and $1.29\,\mathrm{dB}$ for \texttt{zero\_coherence}. These paired differences are all statistically significant against \texttt{incidence} after Holm correction within the validated-RMSE contrast family (all adjusted $p \le 2.1\times10^{-14}$), and the full model beats incidence-only on all 50 targets.
-
-At the same time, the three full-geometry ablations remain mutually indistinguishable on final validated RMSE. The paired mean difference between \texttt{full} and \texttt{no\_delay} is only $0.048\,\mathrm{dB}$ (95\% CI: $[-0.118,\,0.214]\,\mathrm{dB}$, Holm-adjusted $p=1.00$), and the paired mean difference between \texttt{full} and \texttt{zero\_coherence} is $-0.006\,\mathrm{dB}$ (95\% CI: $[-0.199,\,0.187]\,\mathrm{dB}$, Holm-adjusted $p=1.00$). These results show that geometry beyond incidence-only control contributes materially to target matching, but they do not isolate a measurable additional benefit from activating incidence delay or nonzero coherence relative to the other full-geometry mechanisms.
+Table~\ref{tab:campaign_results} summarizes performance by mechanism condition. Optimizing full geometry significantly outperforms incidence-only control. Relative to \texttt{incidence}, mean validated RMSE decreases by $1.30\,\mathrm{dB}$ for \texttt{full}, $1.34\,\mathrm{dB}$ for \texttt{no\_delay}, and $1.29\,\mathrm{dB}$ for \texttt{zero\_coherence} (Holm-corrected $p \le 2.1\times10^{-14}$, Fig.~\ref{fig:campaign_freedom_fit}). However, differences among the three full-geometry configurations are statistically indistinguishable. The mean difference between \texttt{full} and \texttt{no\_delay} is $0.048\,\mathrm{dB}$ (95\% CI: $[-0.118,\,0.214]\,\mathrm{dB}$, $p=1.00$), and between \texttt{full} and \texttt{zero\_coherence} is $-0.006\,\mathrm{dB}$ (95\% CI: $[-0.199,\,0.187]\,\mathrm{dB}$, $p=1.00$).
 
 \begin{table}[htbp]
 \centering
@@ -686,9 +540,9 @@ $\mathtt{full}$ & $9.157\pm2.404$ & $-1.295$ & $[-1.481,\,-1.109]$ & $50/50$ & $
     \label{fig:campaign_freedom_fit}
 \end{figure}
 
-\subsection{Dependence on target class}
+\subsection{Influence of target complexity and aerodynamic tradeoffs}
 
-The benefit of full geometry over incidence-only control is present across all target classes and grows with target complexity. Table~\ref{tab:lobe_results} shows that the paired full-minus-incidence RMSE difference is $-0.97\,\mathrm{dB}$ for one-lobe targets, $-1.27\,\mathrm{dB}$ for two-lobe targets, and $-1.63\,\mathrm{dB}$ for three-lobe targets, with all three contrasts excluding zero in their 95\% confidence intervals. This trend suggests that the additional geometric degrees of freedom become more useful as the target pattern requires more structured redistribution of directivity. A limitation is that the random-target generator does not perfectly equalize baseline difficulty across lobe classes, so the observed trend should be interpreted as suggestive rather than as a universal law of controllability.
+The performance advantage of full geometry increases with target complexity (Table~\ref{tab:lobe_results}). The paired full-minus-incidence RMSE difference is $-0.97\,\mathrm{dB}$ for one-lobe targets, $-1.27\,\mathrm{dB}$ for two-lobe targets, and $-1.63\,\mathrm{dB}$ for three-lobe targets.
 
 \begin{table}[htbp]
 \centering
@@ -707,9 +561,7 @@ Three-lobe & 18 & $9.602\pm0.873$ & $7.975\pm1.046$ & $-1.626\;[-1.854,\,-1.399]
 }
 \end{table}
 
-\subsection{Aerodynamic proxy tradeoff}
-
-The acoustic advantage of the full-geometry classes is accompanied by a modest aerodynamic proxy penalty in some closures. Relative to the incidence-only case, the mean drag ratio increases by $0.0669$ for the full model (95\% CI: $[0.0188,\,0.1151]$, Holm-adjusted $p=0.022$) and by $0.0675$ for the no-delay case (Holm-adjusted $p=0.016$). In contrast, the zero-coherence case is statistically indistinguishable from incidence-only on drag ratio (Holm-adjusted $p=1.00$). None of the lift-to-drag retention differences between mechanism levels are statistically significant at the study scale after the same correction. The results indicate that full-geometry mutation can improve target matching, but the aerodynamic cost of that benefit depends on which acoustic mechanisms are active.
+This acoustic benefit is accompanied by a small aerodynamic penalty (Fig.~\ref{fig:freedom_tradeoff}). Relative to \texttt{incidence}, the drag ratio increases by $0.0669$ for \texttt{full} (95\% CI: $[0.0188,\,0.1151]$, $p=0.022$) and by $0.0675$ for \texttt{no\_delay} ($p=0.016$), while \texttt{zero\_coherence} shows no statistically significant drag penalty ($p=1.00$). No significant differences were observed in lift-to-drag retention.
 
 \begin{figure}[htbp]
     \centering
@@ -720,7 +572,7 @@ The acoustic advantage of the full-geometry classes is accompanied by a modest a
 
 \subsection{Theory--surrogate validation}
 
-Validation should be interpreted at two levels. First, the study itself provides a large validation dataset through the saved \texttt{theory\_vs\_simulation.csv} files. Aggregating the full-model results across all 50 targets yields 29{,}400 comparison points: 4{,}900 calibration points at the single calibration frequency and 24{,}500 held-out validation points across the remaining five frequencies. On the calibration subset, the theory--surrogate RMSE is $2.42\,\mathrm{dB}$ with MAE $1.83\,\mathrm{dB}$ and bias $-0.21\,\mathrm{dB}$. On the held-out validation subset, the RMSE rises to $5.70\,\mathrm{dB}$ with MAE $4.58\,\mathrm{dB}$ and a positive bias of $4.05\,\mathrm{dB}$. Across all 29{,}400 points, the RMSE is $5.29\,\mathrm{dB}$.
+We aggregate 29{,}400 theory--surrogate comparison points across all 50 targets (Table~\ref{tab:validation_results}). The calibration subset (single frequency) yields an RMSE of $2.42\,\mathrm{dB}$ (MAE $1.83\,\mathrm{dB}$, bias $-0.21\,\mathrm{dB}$), while the held-out validation subset (five frequencies) has an RMSE of $5.70\,\mathrm{dB}$ (MAE $4.58\,\mathrm{dB}$, bias $4.05\,\mathrm{dB}$).
 
 \begin{table}[htbp]
 \centering
@@ -737,9 +589,7 @@ All & 29{,}400 & $3.34$ & $4.12$ & $5.29$ \\
 \end{tabular}
 \end{table}
 
-Second, a denser representative validation was run for the median-like full-model design at target seed 19, using 288 observer directions and 64 spanwise source points per feather. This produces 1{,}728 theory--surrogate comparison points and yields an overall RMSE of $5.34\,\mathrm{dB}$, with $2.81\,\mathrm{dB}$ on calibration rows and $5.71\,\mathrm{dB}$ on held-out validation rows. The representative case is therefore consistent with the study-level validation picture rather than materially better or worse than it. Figures~\ref{fig:validation_geometry} and~\ref{fig:validation_directivity} show the optimized feathered-wingtip geometry and the corresponding achieved-versus-target directivity for this case.
-
-The validation error is strongly frequency dependent. For the aggregate full-model results, the RMSE is $2.01$--$2.42\,\mathrm{dB}$ from 250 to 1000 Hz ($\kappa\approx1.4$--$5.5$), rises to $3.77\,\mathrm{dB}$ at 2000 Hz ($\kappa\approx11$), and increases further to $6.30\,\mathrm{dB}$ at 4000 Hz ($\kappa\approx22$) and $9.99\,\mathrm{dB}$ at 8000 Hz ($\kappa\approx44$). Thus the theoretical model is substantially more reliable as a low- to mid-frequency normalized-directivity tool than as a high-frequency absolute level predictor.
+A high-resolution dense validation for target seed 19 (1{,}728 points, 288 observers, 64 spanwise points) confirms these findings with an overall RMSE of $5.34\,\mathrm{dB}$ ($2.81\,\mathrm{dB}$ calibration, $5.71\,\mathrm{dB}$ validation; Figs.~\ref{fig:validation_geometry} to~\ref{fig:validation_scatter}).
 
 \begin{figure}[htbp]
     \centering
@@ -769,6 +619,8 @@ The validation error is strongly frequency dependent. For the aggregate full-mod
     \label{fig:validation_scatter}
 \end{figure}
 
+Discrepancy is highly frequency dependent (Fig.~\ref{fig:validation_error_by_frequency}). RMSE remains at $2.01$--$2.42\,\mathrm{dB}$ for 250--1000 Hz ($\kappa\approx1.4$--$5.5$), rises to $3.77\,\mathrm{dB}$ at 2000 Hz ($\kappa\approx11$), and increases to $9.99\,\mathrm{dB}$ at 8000 Hz ($\kappa\approx44$). The theoretical model is therefore reliable for low-to-mid-frequency directivity screening rather than absolute high-frequency prediction.
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_error_by_frequency.pdf}
@@ -778,17 +630,11 @@ The validation error is strongly frequency dependent. For the aggregate full-mod
 
 \section{Discussion}
 
-\subsection{Nondimensional interpretation of the regime}
+\subsection{Physical mechanisms of geometry-sensitive directivity control}
 
-Table~\ref{tab:nondim_regime} is the most appropriate way to read the present study. In nondimensional terms, the analyzed band spans $\kappa \approx 1.4$--$44.0$, with the strongest validation support concentrated below about $\kappa \approx 11$; for the present reference chord this corresponds to 250--2000 Hz. The closure lengths satisfy $(\tilde a_x,\tilde a_y,\tilde a_z)=(3,3,1)$, so the model is intentionally neither fully coherent nor fully decorrelated at the geometric scale of neighboring feathers in the lower part of the band.
+The primary result of our campaign is that full-geometry optimization achieves about $1.3\,\mathrm{dB}$ lower validated target-shape RMSE than incidence-only control, but the three full-geometry configurations (\texttt{full}, \texttt{no\_delay}, \texttt{zero\_coherence}) perform identically. 
 
-The optimized full-model designs also show that the incidence-delay term is genuinely active in this regime. Across the 50 saved full-model optima, the maximum pairwise incidence spread lies between $1.51$ and $2.47\,\mathrm{rad}$, with a median of $1.94\,\mathrm{rad}$. The corresponding delay phase group $\Theta_{mn}=\omega b_\alpha\Delta\alpha$ therefore has median values of about $1.52$ at $250\,\mathrm{Hz}$, $6.08$ at $1000\,\mathrm{Hz}$, $24.32$ at $4000\,\mathrm{Hz}$, and $48.64$ at $8000\,\mathrm{Hz}$. The absence of a measurable advantage for the \texttt{full} model over \texttt{no\_delay} should therefore not be read as a trivial consequence of vanishing phase shift. It is a result about this nondimensional regime: the delay phase is active, but its effect on the final objective remains secondary to other geometry-sensitive terms.
-
-\subsection{Role of geometry under the closure model}
-
-The closure model produces a clear separation between incidence-only control and the three full-geometry ablations. Every full-geometry ablation outperforms incidence-only control by about $1.3\,\mathrm{dB}$ on final validated RMSE, and the full model wins against incidence-only on all 50 targets. This indicates that geometry beyond incidence variation contributes materially to target matching.
-
-The mathematically relevant point is that the far-field spectrum can be decomposed as
+To interpret this, we expand the far-field spectrum into diagonal (uncorrelated) and off-diagonal (coherent) terms:
 \begin{equation}
     S_{pp}(\vect{n},\omega)
     =
@@ -802,13 +648,7 @@ The mathematically relevant point is that the far-field spectrum can be decompos
         \Gamma_{mn}
     \right].
 \end{equation}
-The first summation is the diagonal contribution; the second contains the coherence and incidence-delay mechanisms through $\Gamma_{mn}$. The study results show that moving from the incidence-only case to the three full-geometry ablations yields a large benefit, but that moving between the zero-coherence, no-delay, and full cases does not. The most plausible interpretation is therefore that geometry-sensitive control arises primarily through geometry-dependent source weighting and transfer projection, while the additional phase-sensitive terms remain secondary within the present parameter regime.
-
-\subsection{Implications of the mechanism ablation}
-
-The results support the claim that geometry beyond incidence matters within this formulation. They do not support a stronger claim that incidence-delay tuning or nonzero coherence alone provides a unique additional advantage. In statistical terms, the full model is not measurably better than either \texttt{no\_delay} or \texttt{zero\_coherence} on final validated RMSE. This does not imply that the added mechanisms are mathematically inactive; it implies that their effect size is small relative to the dominant geometry-sensitive terms and the run-to-run variability of the target set.
-
-The zero-coherence limit is especially informative here. Even when $\Gamma_{mn}=0$ for $m\neq n$, the diagonal spectrum retains strong dependence on the source amplitudes, local loading directions, chord scaling, and quadrature weighting:
+The diagonal terms depend on local source amplitudes, loading orientations, and chords, while the off-diagonal terms introduce spatial coherence and delay phases. The equivalence of \texttt{zero\_coherence} ($\Gamma_{mn}=0$) and the other configurations indicates that the $1.3\,\mathrm{dB}$ performance improvement is driven by the diagonal term:
 \begin{equation}
     S_{pp}^{(0)}(\vect{n},\omega)
     =
@@ -822,28 +662,23 @@ The zero-coherence limit is especially informative here. Even when $\Gamma_{mn}=
     \right|^2
     \Phi_m.
 \end{equation}
-Consequently, a large fraction of the gain from full-geometry mutation can arise without any off-diagonal phase interaction at all. The study indicates that this mechanism is strong enough to account for nearly all of the difference between incidence-only and the full-geometry classes.
+Spatial re-spacing, sweep-induced local dipole rotation ($\vect{d}_m\cdot\vect{n}$), and source strength redistribution ($\Phi_m$) dominate over inter-feather phase interference. 
 
-\subsection{Target complexity and controllability}
+This is not because the phase-delay term is mathematically inactive. The optimized full-model configurations exhibit pairwise incidence spreads of $1.51$--$2.47\,\mathrm{rad}$ (median $1.94\,\mathrm{rad}$), yielding active delay phase groups $\Theta_{mn}=\omega b_\alpha(\alpha_m-\alpha_n)$ ranging from $1.52$ (at $250\,\mathrm{Hz}$) to $48.64$ (at $8000\,\mathrm{Hz}$). Rather, these phase effects remain secondary to geometric dipole projections and source weighting in this regime.
 
-The lobe-count analysis suggests that the extra geometric freedom becomes more useful as the target shape becomes more structured. The full-minus-incidence advantage grows from about $0.97\,\mathrm{dB}$ for one-lobe targets to $1.63\,\mathrm{dB}$ for three-lobe targets. This is consistent with the idea that additional geometric parameters provide more independent levers for redistributing directivity over multiple sectors. However, because the random target generator does not enforce matched baseline difficulty across lobe classes, this trend should be interpreted as an empirical tendency within the target ensemble rather than as a general theorem about target complexity.
+\subsection{Limitations and model bounds}
 
-\subsection{Validation-limited interpretation}
+The theory--surrogate discrepancy increases significantly above $\kappa = kc_{\mathrm{ref}} \approx 11$ ($2\,\mathrm{kHz}$). This spectral discrepancy arises because the single-frequency calibration does not align the distinct spectral envelopes of the compact theoretical autospectrum and the multi-component, BPM/TNO-inspired surrogate. 
 
-The theory--surrogate validation places an important bound on what can be claimed. Calibration agreement is reasonable, and low- to mid-frequency error remains in the few-decibel range. The dominant discrepancy is spectral: the theory progressively overpredicts the surrogate at higher frequencies. In the present nondimensionalization, the validation begins to deteriorate once $\kappa=kc_{\mathrm{ref}}$ exceeds roughly 11. This behavior is exactly what one would expect when a single scalar level calibration is used to match two models whose spectral envelopes are not identical. In other words, the residual error is not well described as a simple global amplitude mismatch; it reflects a frequency-dependent closure mismatch between the compact theoretical autospectrum and the BPM/TNO-inspired surrogate mechanisms.
-
-Accordingly, the results provide normalized-directivity and mechanism-comparison evidence, especially in the low- and mid-frequency part of the band. They are not sufficient for high-frequency absolute sound-pressure prediction, nor do they establish that the selected closure constants are physically calibrated. A stronger next step would be frequency-dependent or mechanism-dependent calibration against higher-fidelity data, followed by a repeat of the same ablation structure.
+Therefore, the present framework serves as a relative screening and mechanism-isolation tool for low-to-mid-frequency directivity matching. It is not suitable for high-frequency absolute sound level predictions. Further calibration against high-fidelity experimental or computational datasets is required to establish physical closure parameters.
 
 \section{Conclusion}
 
-This paper recasts feathered-wingtip directivity control as a positive-semidefinite stochastic aeroacoustic array problem and uses that formulation to test mechanism, not merely target fit. The framework combines a shared feathered geometry model, a distributed loading-noise source representation, a Hermitian positive-semidefinite cross-spectral matrix, arbitrary smooth target-directivity optimization, surrogate validation, and aerodynamic proxy screening.
+We have presented a positive-semidefinite stochastic array framework to analyze feathered-wingtip directivity control. By using a Hermitian cross-spectral matrix, the formulation guarantees physically valid, non-negative pressure spectra while enabling comparative mechanism ablations. 
 
-The closure defaults activate geometry-sensitive coherence and incidence-delay effects on the length and frequency scales of the modeled feather assembly. At the study level, full-geometry mutation outperforms incidence-only control by approximately $1.3\,\mathrm{dB}$ in final validated surrogate RMSE, so geometry beyond incidence is materially useful in this formulation. However, the \texttt{full}, \texttt{no\_delay}, and \texttt{zero\_coherence} ablations remain statistically indistinguishable on that same metric. The most plausible interpretation is therefore that the formulation captures geometry-sensitive directivity control, but does not yet show that coherent phase interaction or incidence-delay tuning is the dominant additional mechanism in the regime $M_\infty\approx0.087$, $\kappa\approx1.4$--$44$, $(\tilde a_x,\tilde a_y,\tilde a_z)=(3,3,1)$, and $\Pi_\alpha=0.05$.
-
-Study-wide and representative high-resolution validation both show that the theoretical model is substantially more reliable at low and mid frequencies than at high frequencies, with the strongest support below about $\kappa\approx11$. The framework therefore supports normalized directivity screening and mechanism comparison in that nondimensional range, but not high-frequency absolute sound-pressure prediction. The natural next step is closure calibration against higher-fidelity data and targeted sensitivity studies over coherence and delay parameters.
+In a 50-target optimization campaign, modifying full geometry achieved a $1.3\,\mathrm{dB}$ validated RMSE advantage over incidence-only control. However, the identical performance of the \texttt{full}, \texttt{no\_delay}, and \texttt{zero\_coherence} models indicates that this improvement is driven by geometric source redistribution and dipole rotation rather than coherent phase steering. Validation against an independent self-noise surrogate indicates that the model is reliable for low-to-mid-frequency screening ($\kappa \le 11$). Future work will focus on calibrating the closure constants using high-fidelity aerodynamic and acoustic data.
 
 \begin{thebibliography}{99}
-
 
 \bibitem{Amiet1976}
 R. K. Amiet,
