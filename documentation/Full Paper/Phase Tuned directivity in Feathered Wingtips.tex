@@ -1,4 +1,4 @@
-\documentclass[11pt]{article}
+\documentclass[11pt,twocolumn]{article}
 
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsfonts,bm}
@@ -273,6 +273,8 @@ with:
     1+a_\alpha(\alpha_m-\alpha_{\mathrm{ref}})^2.
 \end{equation}
 
+\subsection{Spatial coherence and delay closures}
+
 The spatial coherence magnitude and incidence-dependent phase delay are modeled as:
 \begin{equation}
     |\Gamma_{mn}(\omega)|
@@ -341,7 +343,7 @@ and the delay phase group:
 \label{eq:delay_phase_group}
 \end{equation}
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
 \caption{Dimensionless regime parameters for the current study. Baseline nearest-neighbor values are computed from the default geometry using the source discretization employed by the genetic search.}
 \label{tab:nondim_regime}
@@ -358,7 +360,7 @@ Baseline nearest inter-feather spacing & $s_{\mathrm{nn}}/c_{\mathrm{ref}}$ & $0
 Baseline coherence distance & $\tilde d_{\mathrm{nn}}$ & $0.264$--$0.924$ (median $0.476$) \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 The transfer weight for source point $m$ is:
 \begin{equation}
@@ -499,23 +501,23 @@ Our 50-target optimization campaign (200 total runs across four configurations) 
 
 Under the full model, target RMSE decreases from $14.60\pm1.48\,\mathrm{dB}$ (baseline) to $9.16\pm2.40\,\mathrm{dB}$ (validated surrogate), showing a mean within-model improvement of $5.44\pm1.59\,\mathrm{dB}$ (Figs.~\ref{fig:campaign_target_fit} and~\ref{fig:campaign_directivity}).
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_target_fit_chart.pdf}
     \caption{Target-fit error before and after optimization across the full study. Each row compares the baseline theory, optimized theory, and validated surrogate RMSE for one run. The systematic leftward shift of the optimized and validated bars indicates consistent target-shape improvement under the modeled mechanism set.}
     \label{fig:campaign_target_fit}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth,height=0.45\textheight,keepaspectratio]{../../outputs/optimization/campaign_directivity_grid.pdf}
     \caption{Representative optimized directivity patterns against target shapes. The examples show that the optimizer can redistribute normalized directivity substantially, although residual mismatch remains for difficult targets and the problem should therefore be interpreted as target-shape improvement rather than exact target synthesis.}
     \label{fig:campaign_directivity}
-\end{figure}
+\end{figure*}
 
 Table~\ref{tab:campaign_results} summarizes performance by mechanism condition. Optimizing full geometry significantly outperforms incidence-only control. Relative to \texttt{incidence}, mean validated RMSE decreases by $1.30\,\mathrm{dB}$ for \texttt{full}, $1.34\,\mathrm{dB}$ for \texttt{no\_delay}, and $1.29\,\mathrm{dB}$ for \texttt{zero\_coherence} (Holm-corrected $p \le 2.1\times10^{-14}$, Fig.~\ref{fig:campaign_freedom_fit}). However, differences among the three full-geometry configurations are statistically indistinguishable. The mean difference between \texttt{full} and \texttt{no\_delay} is $0.048\,\mathrm{dB}$ (95\% CI: $[-0.118,\,0.214]\,\mathrm{dB}$, $p=1.00$), and between \texttt{full} and \texttt{zero\_coherence} is $-0.006\,\mathrm{dB}$ (95\% CI: $[-0.199,\,0.187]\,\mathrm{dB}$, $p=1.00$).
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
 \caption{Study results across the 50-target set. Cross-ablation comparison is based on final validated surrogate RMSE. The paired RMSE difference is reported relative to \texttt{incidence}, so negative values indicate better target matching. Drag ratio and lift-to-drag retention are low-order aerodynamic proxies, not validated aerodynamic coefficients.}
 \label{tab:campaign_results}
@@ -531,20 +533,20 @@ $\mathtt{full}$ & $9.157\pm2.404$ & $-1.295$ & $[-1.481,\,-1.109]$ & $50/50$ & $
 \bottomrule
 \end{tabular}%
 }
-\end{table}
+\end{table*}
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_freedom_fit_chart.pdf}
     \caption{Mechanism condition versus validated target-fit error. The incidence-only condition is clearly separated from the three full-geometry ablations, showing that geometry beyond incidence contributes materially to target matching.}
     \label{fig:campaign_freedom_fit}
-\end{figure}
+\end{figure*}
 
 \subsection{Influence of target complexity and aerodynamic tradeoffs}
 
 The performance advantage of full geometry increases with target complexity (Table~\ref{tab:lobe_results}). The paired full-minus-incidence RMSE difference is $-0.97\,\mathrm{dB}$ for one-lobe targets, $-1.27\,\mathrm{dB}$ for two-lobe targets, and $-1.63\,\mathrm{dB}$ for three-lobe targets.
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
 \caption{Target-class dependence of the full-model advantage over incidence-only optimization. The table reports the final validated surrogate RMSE for each class and the paired full-minus-incidence RMSE difference. Negative differences indicate that the full model fits the target more closely.}
 \label{tab:lobe_results}
@@ -559,22 +561,22 @@ Three-lobe & 18 & $9.602\pm0.873$ & $7.975\pm1.046$ & $-1.626\;[-1.854,\,-1.399]
 \bottomrule
 \end{tabular}
 }
-\end{table}
+\end{table*}
 
 This acoustic benefit is accompanied by a small aerodynamic penalty (Fig.~\ref{fig:freedom_tradeoff}). Relative to \texttt{incidence}, the drag ratio increases by $0.0669$ for \texttt{full} (95\% CI: $[0.0188,\,0.1151]$, $p=0.022$) and by $0.0675$ for \texttt{no\_delay} ($p=0.016$), while \texttt{zero\_coherence} shows no statistically significant drag penalty ($p=1.00$). No significant differences were observed in lift-to-drag retention.
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_freedom_tradeoff_chart.pdf}
     \caption{Mechanism-level acoustic--aerodynamic tradeoff. Rightward movement indicates larger target-fit improvement relative to each ablation's own baseline, so the horizontal coordinate should be read descriptively rather than as a formal cross-ablation metric. Lower drag ratio is aerodynamically preferable. The full and no-delay conditions occupy similar acoustic positions and similar drag ratios, whereas the zero-coherence condition retains most of the acoustic benefit without the same drag-ratio increase.}
     \label{fig:freedom_tradeoff}
-\end{figure}
+\end{figure*}
 
 \subsection{Theory--surrogate validation}
 
 We aggregate 29{,}400 theory--surrogate comparison points across all 50 targets (Table~\ref{tab:validation_results}). The calibration subset (single frequency) yields an RMSE of $2.42\,\mathrm{dB}$ (MAE $1.83\,\mathrm{dB}$, bias $-0.21\,\mathrm{dB}$), while the held-out validation subset (five frequencies) has an RMSE of $5.70\,\mathrm{dB}$ (MAE $4.58\,\mathrm{dB}$, bias $4.05\,\mathrm{dB}$).
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
 \caption{Study-wide theory--surrogate validation for the full model, aggregated across all 50 targets. Calibration uses the rows marked \texttt{calibration} in the stored comparison files; validation uses the held-out rows marked \texttt{validation}.}
 \label{tab:validation_results}
@@ -587,11 +589,11 @@ Validation & 24{,}500 & $4.05$ & $4.58$ & $5.70$ \\
 All & 29{,}400 & $3.34$ & $4.12$ & $5.29$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 A high-resolution dense validation for target seed 19 (1{,}728 points, 288 observers, 64 spanwise points) confirms these findings with an overall RMSE of $5.34\,\mathrm{dB}$ ($2.81\,\mathrm{dB}$ calibration, $5.71\,\mathrm{dB}$ validation; Figs.~\ref{fig:validation_geometry} to~\ref{fig:validation_scatter}).
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
     \centering
     \begin{minipage}[t]{0.49\textwidth}
         \centering
@@ -603,30 +605,30 @@ A high-resolution dense validation for target seed 19 (1{,}728 points, 288 obser
     \end{minipage}
     \caption{Representative optimized feathered-wingtip geometry for the dense validation case at target seed 19. The plan and side views show the spanwise spacing, sweep distribution, out-of-plane curvature, and per-feather incidence variation available to the optimizer.}
     \label{fig:validation_geometry}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_directivity.pdf}
     \caption{Representative achieved-versus-target directivity for the dense validation case at target seed 19. The figure provides the most direct visual comparison between the desired directivity pattern and the surrogate-validated pattern obtained from the optimized geometry.}
     \label{fig:validation_directivity}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_scatter.pdf}
     \caption{High-resolution representative theory--surrogate scatter for the full-model geometry at target seed 19. Agreement is acceptable at the calibration frequency after scalar level calibration, but the wider spread in held-out points confirms that the model error is not captured by a single frequency-independent scale factor.}
     \label{fig:validation_scatter}
-\end{figure}
+\end{figure*}
 
 Discrepancy is highly frequency dependent (Fig.~\ref{fig:validation_error_by_frequency}). RMSE remains at $2.01$--$2.42\,\mathrm{dB}$ for 250--1000 Hz ($\kappa\approx1.4$--$5.5$), rises to $3.77\,\mathrm{dB}$ at 2000 Hz ($\kappa\approx11$), and increases to $9.99\,\mathrm{dB}$ at 8000 Hz ($\kappa\approx44$). The theoretical model is therefore reliable for low-to-mid-frequency directivity screening rather than absolute high-frequency prediction.
 
-\begin{figure}[htbp]
+\begin{figure*}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_error_by_frequency.pdf}
     \caption{Representative full-model validation error by frequency. The same trend is visible in the aggregate results: low- and mid-frequency agreement is materially better than high-frequency agreement, indicating that the remaining model discrepancy is primarily spectral rather than purely directional.}
     \label{fig:validation_error_by_frequency}
-\end{figure}
+\end{figure*}
 
 \section{Discussion}
 
@@ -678,6 +680,10 @@ We have presented a positive-semidefinite stochastic array framework to analyze 
 
 In a 50-target optimization campaign, modifying full geometry achieved a $1.3\,\mathrm{dB}$ validated RMSE advantage over incidence-only control. However, the identical performance of the \texttt{full}, \texttt{no\_delay}, and \texttt{zero\_coherence} models indicates that this improvement is driven by geometric source redistribution and dipole rotation rather than coherent phase steering. Validation against an independent self-noise surrogate indicates that the model is reliable for low-to-mid-frequency screening ($\kappa \le 11$). Future work will focus on calibrating the closure constants using high-fidelity aerodynamic and acoustic data.
 
+\clearpage
+\onecolumn
+\appendix
+
 \begin{thebibliography}{99}
 
 \bibitem{Amiet1976}
@@ -716,7 +722,6 @@ NASA Technical Report, NTRS 20070010579, 2007.
 \end{thebibliography}
 
 \clearpage
-\appendix
 
 \section{Figure Index}
 
