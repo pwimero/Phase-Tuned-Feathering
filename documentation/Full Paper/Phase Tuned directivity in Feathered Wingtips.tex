@@ -1,4 +1,4 @@
-\documentclass[11pt,twocolumn]{article}
+\documentclass[11pt]{article}
 
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsfonts,bm}
@@ -273,8 +273,6 @@ with:
     1+a_\alpha(\alpha_m-\alpha_{\mathrm{ref}})^2.
 \end{equation}
 
-\subsection{Spatial coherence and delay closures}
-
 The spatial coherence magnitude and incidence-dependent phase delay are modeled as:
 \begin{equation}
     |\Gamma_{mn}(\omega)|
@@ -343,7 +341,7 @@ and the delay phase group:
 \label{eq:delay_phase_group}
 \end{equation}
 
-\begin{table*}[htbp]
+\begin{table}[htbp]
 \centering
 \caption{Dimensionless regime parameters for the current study. Baseline nearest-neighbor values are computed from the default geometry using the source discretization employed by the genetic search.}
 \label{tab:nondim_regime}
@@ -360,7 +358,7 @@ Baseline nearest inter-feather spacing & $s_{\mathrm{nn}}/c_{\mathrm{ref}}$ & $0
 Baseline coherence distance & $\tilde d_{\mathrm{nn}}$ & $0.264$--$0.924$ (median $0.476$) \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 The transfer weight for source point $m$ is:
 \begin{equation}
@@ -493,6 +491,200 @@ To accelerate the genetic search, the PyTorch acoustic path refactors the CSD ma
 
 We perform a paired repeated-target analysis across 50 random target seeds. Pairwise contrasts $d_s^{(A,B)} = y_s^{(A)} - y_s^{(B)}$ for response variables $y$ (validated RMSE, drag ratio, and $L/D$ retention) are evaluated using two-sided paired Student-$t$ tests. Family-wise error rates are controlled using Holm-adjusted $p$-values.
 
+\section{Mathematical and Numerical Validation}
+
+To ensure the physical validity and numerical robustness of the aeroacoustic array framework, this section establishes three core propositions. First, we prove that the positive-semidefiniteness of the source cross-spectral matrix guarantees non-negative far-field pressure power spectral densities. Second, we verify the Hermitian symmetry of the cross-spectral matrix across all implemented coherence models. Third, we numerically demonstrate the spanwise grid convergence and quantify its rate.
+
+\subsection{Proposition 1 --- Power Spectral Density Non-negativity}
+
+Let the source cross-spectral matrix $\mat{C}_q(\omega) \in \mathbb{C}^{N \times N}$ be positive-semidefinite (PSD), denoted as $\mat{C}_q(\omega) \succeq 0$. We show that the far-field pressure power spectral density $S_{pp}(\vect{n},\omega) \ge 0$ for all frequencies $\omega$ and observer directions $\vect{n}$.
+
+\paragraph{Proof.}
+Recall the discretized far-field pressure PSD given by Eq.~\ref{eq:discrete_psd}:
+\begin{equation*}
+    S_{pp}(\vect{n},\omega)
+    =
+    \frac{1}{(4\pi R)^2}
+    \vect{a}^{H}(\vect{n},\omega)
+    \mat{C}_q(\omega)
+    \vect{a}(\vect{n},\omega).
+\end{equation*}
+By definition of a positive-semidefinite matrix, for any complex vector $\vect{z} \in \mathbb{C}^N$, the quadratic form satisfies:
+\begin{equation*}
+    \vect{z}^H \mat{C}_q(\omega) \vect{z} \ge 0.
+\end{equation*}
+Since $\vect{a}(\vect{n},\omega) \in \mathbb{C}^N$ is a well-defined complex transfer weight vector, and since the propagation distance factor $R > 0$ yields a positive real denominator $(4\pi R)^2 > 0$, substituting $\vect{z} = \vect{a}(\vect{n},\omega)$ directly yields:
+\begin{equation*}
+    S_{pp}(\vect{n},\omega) \ge 0.
+\end{equation*}
+This guarantees that the predicted acoustic power remains non-negative under any observer angle and frequency, preventing non-physical negative energy states. $\hfill \blacksquare$
+
+\vspace{1em}
+We now prove that each of the three implemented coherence models yields $\mat{C}_q(\omega) \succeq 0$. The source cross-spectral matrix is closed via Eq.~\ref{eq:source_cross_spectrum} as:
+\begin{equation*}
+    C_{q,mn}(\omega) = \sqrt{\Phi_m(\omega)\Phi_n(\omega)} \Gamma_{mn}(\omega).
+\end{equation*}
+Let $\vect{v} = [\sqrt{\Phi_1}, \dots, \sqrt{\Phi_N}]^T \in \mathbb{R}^N$ be a real-valued vector of source amplitude terms (since $\Phi_i \ge 0$). We define the rank-1 outer product matrix $\mat{S} = \vect{v}\vect{v}^T \in \mathbb{R}^{N \times N}$. For any complex vector $\vect{z} \in \mathbb{C}^N$:
+\begin{equation*}
+    \vect{z}^H \mat{S} \vect{z}
+    =
+    \vect{z}^H (\vect{v}\vect{v}^T) \vect{z}
+    =
+    (\vect{z}^H \vect{v})(\vect{v}^T \vect{z})
+    =
+    \left| \vect{z}^H \vect{v} \right|^2 \ge 0.
+\end{equation*}
+Hence, $\mat{S} \succeq 0$. The source cross-spectral matrix can be written as the Hadamard (entrywise) product:
+\begin{equation*}
+    \mat{C}_q = \mat{S} \circ \mat{\Gamma},
+\end{equation*}
+where $\mat{\Gamma} \in \mathbb{C}^{N \times N}$ is the spatial coherence matrix containing $\Gamma_{mn}$. By the Schur Product Theorem, the Hadamard product of two positive-semidefinite matrices is also positive-semidefinite. Therefore, to show $\mat{C}_q \succeq 0$, it is sufficient to prove that the spatial coherence matrix $\mat{\Gamma} \succeq 0$ for each implemented model.
+
+\paragraph{1. Zero Coherence Model.}
+Under the \texttt{zero\_coherence} limit, the coherence elements are:
+\begin{equation*}
+    \Gamma_{mn} = \delta_{mn},
+\end{equation*}
+which corresponds to the identity matrix $\mat{\Gamma} = \mat{I}$. Because all eigenvalues of the identity matrix are unity ($1 > 0$), $\mat{I}$ is positive-definite, and hence $\mat{\Gamma} \succeq 0$.
+
+\paragraph{2. Full Coherence Model.}
+In the completely coherent limit, the complex coherence function is:
+\begin{equation*}
+    \Gamma_{mn}(\omega) = \exp\left[ \ii \omega \left( \tau_\alpha(\alpha_m) - \tau_\alpha(\alpha_n) \right) \right].
+\end{equation*}
+Defining the complex vector $\vect{u} \in \mathbb{C}^N$ with elements $u_m = \exp\left[\ii \omega \tau_\alpha(\alpha_m)\right]$, the coherence matrix can be expressed as the rank-1 outer product $\mat{\Gamma} = \vect{u}\vect{u}^H$. For any $\vect{z} \in \mathbb{C}^N$:
+\begin{equation*}
+    \vect{z}^H \mat{\Gamma} \vect{z}
+    =
+    \vect{z}^H (\vect{u}\vect{u}^H) \vect{z}
+    =
+    \left| \vect{z}^H \vect{u} \right|^2 \ge 0.
+\end{equation*}
+Thus, $\mat{\Gamma} \succeq 0$.
+
+\paragraph{3. Exponential Coherence Model.}
+For the partially coherent case, the coherence matrix incorporates spatial decay:
+\begin{equation*}
+    \Gamma_{mn}(\omega) = \exp\left[ - \tilde{d}_{mn} \frac{f}{f_{\mathrm{ref}}} \right] \exp\left[ \ii \omega \left( \tau_\alpha(\alpha_m) - \tau_\alpha(\alpha_n) \right) \right].
+\end{equation*}
+Let $\mat{D} \in \mathbb{R}^{N \times N}$ be the real spatial correlation matrix with elements:
+\begin{equation*}
+    D_{mn} = \exp\left[ - \tilde{d}_{mn} \frac{f}{f_{\mathrm{ref}}} \right],
+\end{equation*}
+where $\tilde{d}_{mn}$ is the dimensionless distance metric given by Eq.~\ref{eq:nondim_coherence_distance}. The matrix $\mat{\Gamma}$ can be written as the Hadamard product of $\mat{D}$ and the full coherence rank-1 outer product:
+\begin{equation*}
+    \mat{\Gamma} = \mat{D} \circ (\vect{u}\vect{u}^H).
+\end{equation*}
+By the Schur Product Theorem, since $\vect{u}\vect{u}^H \succeq 0$, it suffices to show $\mat{D} \succeq 0$.
+The elements $D_{mn}$ are evaluated as:
+\begin{equation*}
+    D_{mn} = \exp\left[ - c \left\| \vect{x}'_m - \vect{x}'_n \right\|_2 \right],
+\end{equation*}
+where $c = f/f_{\mathrm{ref}} \ge 0$ is a non-negative scalar, and the scaled coordinate vector of source point $m$ is $\vect{x}'_m = [x_m/a_x, y_m/a_y, z_m/a_z]^T \in \mathbb{R}^3$. According to Schoenberg's theorem (1938), the radial basis kernel $k(\vect{x}', \vect{y}') = \exp\left( - c \|\vect{x}' - \vect{y}'\|_p \right)$ is positive-semidefinite in any Euclidean space for exponent $0 < p \le 2$. Setting $p = 1$ establishes that the exponential distance matrix is positive-semidefinite ($\mat{D} \succeq 0$) for any set of source coordinates and any frequency.
+Therefore, by applying the Schur Product Theorem twice, we obtain $\mat{\Gamma} \succeq 0$, and consequently $\mat{C}_q(\omega) \succeq 0$ for all models. $\hfill \blacksquare$
+
+\subsection{Proposition 2 --- Hermitian Symmetry}
+
+We show that the source cross-spectral matrix $\mat{C}_q(\omega)$ satisfies Hermitian symmetry:
+\begin{equation*}
+    C_{q,mn}(\omega) = \overline{C_{q,nm}(\omega)},
+\end{equation*}
+for all indices $m, n \in \{1, \dots, N\}$ and all implemented coherence modes.
+
+\paragraph{Proof.}
+By definition:
+\begin{equation*}
+    C_{q,mn}(\omega) = \sqrt{\Phi_m(\omega)\Phi_n(\omega)} \Gamma_{mn}(\omega).
+\end{equation*}
+Taking the complex conjugate of the entry at $(n,m)$ yields:
+\begin{equation*}
+    \overline{C_{q,nm}(\omega)}
+    =
+    \overline{\sqrt{\Phi_n(\omega)\Phi_m(\omega)} \Gamma_{nm}(\omega)}
+    =
+    \sqrt{\Phi_m(\omega)\Phi_n(\omega)} \overline{\Gamma_{nm}(\omega)},
+\end{equation*}
+because the source autospectra $\Phi_i(\omega) \ge 0$ are real-valued. Thus, $C_{q,mn}(\omega) = \overline{C_{q,nm}(\omega)}$ is satisfied if and only if:
+\begin{equation*}
+    \Gamma_{mn}(\omega) = \overline{\Gamma_{nm}(\omega)}.
+\end{equation*}
+We verify this relation for each coherence model:
+\begin{enumerate}
+    \item \textbf{Zero Coherence:} Since $\Gamma_{mn} = \delta_{mn}$ is real-valued and symmetric ($\delta_{mn} = \delta_{nm}$), we have:
+    \begin{equation*}
+        \overline{\Gamma_{nm}} = \overline{\delta_{nm}} = \delta_{nm} = \delta_{mn} = \Gamma_{mn}.
+    \end{equation*}
+    \item \textbf{Full Coherence:}
+    \begin{equation*}
+        \overline{\Gamma_{nm}(\omega)}
+        =
+        \overline{\exp\left[ \ii \omega \left( \tau_\alpha(\alpha_n) - \tau_\alpha(\alpha_m) \right) \right]}
+        =
+        \exp\left[ -\ii \omega \left( \tau_\alpha(\alpha_n) - \tau_\alpha(\alpha_m) \right) \right]
+        =
+        \Gamma_{mn}(\omega).
+    \end{equation*}
+    \item \textbf{Exponential Coherence:}
+    \begin{equation*}
+        \overline{\Gamma_{nm}(\omega)}
+        =
+        \overline{\exp\left[ - \tilde{d}_{nm} \frac{f}{f_{\mathrm{ref}}} \right] \exp\left[ \ii \omega \left( \tau_\alpha(\alpha_n) - \tau_\alpha(\alpha_m) \right) \right]}.
+    \end{equation*}
+    Because $\tilde{d}_{nm} = \tilde{d}_{mn}$ is the symmetric Euclidean distance, the amplitude decay factor is real and symmetric. Evaluating the conjugate gives:
+    \begin{align*}
+        \overline{\Gamma_{nm}(\omega)}
+        &=
+        \exp\left[ - \tilde{d}_{mn} \frac{f}{f_{\mathrm{ref}}} \right] \exp\left[ -\ii \omega \left( \tau_\alpha(\alpha_n) - \tau_\alpha(\alpha_m) \right) \right]
+        \nonumber\\
+        &=
+        \exp\left[ - \tilde{d}_{mn} \frac{f}{f_{\mathrm{ref}}} \right] \exp\left[ \ii \omega \left( \tau_\alpha(\alpha_m) - \tau_\alpha(\alpha_n) \right) \right]
+        =
+        \Gamma_{mn}(\omega).
+    \end{align*}
+\end{enumerate}
+In all cases, the coherence function satisfies $\Gamma_{mn}(\omega) = \overline{\Gamma_{nm}(\omega)}$, confirming that the cross-spectral matrix $\mat{C}_q(\omega)$ is Hermitian. $\hfill \blacksquare$
+
+\subsection{Proposition 3 --- Grid Convergence}
+
+We demonstrate that the far-field pressure power spectral density $S_{pp}^{(n_\eta)}(f, \vect{n})$ computed with spanwise discretization size $n_\eta$ converges numerically to a unique limit as $n_\eta \to \infty$:
+\begin{equation*}
+    \lim_{n_\eta \to \infty} S_{pp}^{(n_\eta)}(f,\vect{n}) = S_{pp}^{(\infty)}(f,\vect{n}).
+\end{equation*}
+Furthermore, the integration error decays at an asymptotic quadratic rate $O(n_\eta^{-2})$, corresponding to the second-order convergence of the trapezoidal rule.
+
+\paragraph{Numerical Verification.}
+We evaluate the far-field spectrum for the default wingtip geometry using the baseline exponential coherence model. The test case uses an overhead observer ($\vect{n} = [0, 0, 1]^T$) and an acoustic frequency $f = 1000$ Hz. The spanwise parametric coordinate $\eta \in [0, 1]$ is discretized using a uniform grid of $n_\eta$ intervals, yielding a total of $M = N \times (n_\eta + 1)$ source points across the $N = 7$ wingtip feathers.
+We vary $n_\eta \in \{8, 16, 32, 64, 128, 256, 512\}$. For each step, we track the pointwise difference:
+\begin{equation*}
+    \epsilon^{(n_\eta)} = \left| S_{pp}^{(n_\eta)} - S_{pp}^{(n_\eta/2)} \right|,
+\end{equation*}
+and define the empirical convergence rate $r$ as:
+\begin{equation*}
+    r = \log_2 \left( \frac{\epsilon^{(n_\eta)}}{\epsilon^{(2n_\eta)}} \right).
+\end{equation*}
+The results of this study are summarized in Table~\ref{tab:grid_convergence}.
+
+\begin{table}[htbp]
+\centering
+\caption{Grid convergence and empirical convergence rates for the overhead far-field pressure spectral density ($S_{pp}$) at $1000\,\mathrm{Hz}$ using the default feathered wingtip geometry.}
+\label{tab:grid_convergence}
+\begin{tabular}{rrcrL{0.15\linewidth}}
+\toprule
+$n_\eta$ & Grid Size ($M$) & $S_{pp}^{(n_\eta)}\,(\mathrm{Pa}^2/\mathrm{Hz})$ & Difference $\epsilon^{(n_\eta)}\,(\mathrm{Pa}^2/\mathrm{Hz})$ & Rate $r$ \\
+\midrule
+8   & 56   & $4.023946 \times 10^{-7}$ & --- & --- \\
+16  & 112  & $3.976287 \times 10^{-7}$ & $4.765910 \times 10^{-9}$ & --- \\
+32  & 224  & $3.969488 \times 10^{-7}$ & $6.798212 \times 10^{-10}$ & $2.81$ \\
+64  & 448  & $3.967890 \times 10^{-7}$ & $1.598865 \times 10^{-10}$ & $2.09$ \\
+128 & 896  & $3.967485 \times 10^{-7}$ & $4.045956 \times 10^{-11}$ & $1.98$ \\
+256 & 1792 & $3.967379 \times 10^{-7}$ & $1.056082 \times 10^{-11}$ & $1.94$ \\
+512 & 3584 & $3.967354 \times 10^{-7}$ & $2.574053 \times 10^{-12}$ & $2.04$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The empirical rate $r$ approaches the theoretical asymptotic rate of $2.00$ as $n_\eta$ increases. This confirms that the numerical integration scheme preserves the second-order convergence of the trapezoidal rule, ensuring that a choice of $n_\eta = 32$ during the optimization campaign provides a mathematically sound balance of speed and numerical accuracy (representing a relative truncation error of less than $0.06\%$ relative to the converged limit at $n_\eta = 512$).
+
 \section{Results}
 
 Our 50-target optimization campaign (200 total runs across four configurations) shows that directivity control depends significantly on geometric configuration. We compare performance using final validated surrogate RMSE to avoid baseline biases across configurations.
@@ -501,23 +693,23 @@ Our 50-target optimization campaign (200 total runs across four configurations) 
 
 Under the full model, target RMSE decreases from $14.60\pm1.48\,\mathrm{dB}$ (baseline) to $9.16\pm2.40\,\mathrm{dB}$ (validated surrogate), showing a mean within-model improvement of $5.44\pm1.59\,\mathrm{dB}$ (Figs.~\ref{fig:campaign_target_fit} and~\ref{fig:campaign_directivity}).
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_target_fit_chart.pdf}
     \caption{Target-fit error before and after optimization across the full study. Each row compares the baseline theory, optimized theory, and validated surrogate RMSE for one run. The systematic leftward shift of the optimized and validated bars indicates consistent target-shape improvement under the modeled mechanism set.}
     \label{fig:campaign_target_fit}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth,height=0.45\textheight,keepaspectratio]{../../outputs/optimization/campaign_directivity_grid.pdf}
     \caption{Representative optimized directivity patterns against target shapes. The examples show that the optimizer can redistribute normalized directivity substantially, although residual mismatch remains for difficult targets and the problem should therefore be interpreted as target-shape improvement rather than exact target synthesis.}
     \label{fig:campaign_directivity}
-\end{figure*}
+\end{figure}
 
 Table~\ref{tab:campaign_results} summarizes performance by mechanism condition. Optimizing full geometry significantly outperforms incidence-only control. Relative to \texttt{incidence}, mean validated RMSE decreases by $1.30\,\mathrm{dB}$ for \texttt{full}, $1.34\,\mathrm{dB}$ for \texttt{no\_delay}, and $1.29\,\mathrm{dB}$ for \texttt{zero\_coherence} (Holm-corrected $p \le 2.1\times10^{-14}$, Fig.~\ref{fig:campaign_freedom_fit}). However, differences among the three full-geometry configurations are statistically indistinguishable. The mean difference between \texttt{full} and \texttt{no\_delay} is $0.048\,\mathrm{dB}$ (95\% CI: $[-0.118,\,0.214]\,\mathrm{dB}$, $p=1.00$), and between \texttt{full} and \texttt{zero\_coherence} is $-0.006\,\mathrm{dB}$ (95\% CI: $[-0.199,\,0.187]\,\mathrm{dB}$, $p=1.00$).
 
-\begin{table*}[htbp]
+\begin{table}[htbp]
 \centering
 \caption{Study results across the 50-target set. Cross-ablation comparison is based on final validated surrogate RMSE. The paired RMSE difference is reported relative to \texttt{incidence}, so negative values indicate better target matching. Drag ratio and lift-to-drag retention are low-order aerodynamic proxies, not validated aerodynamic coefficients.}
 \label{tab:campaign_results}
@@ -533,20 +725,20 @@ $\mathtt{full}$ & $9.157\pm2.404$ & $-1.295$ & $[-1.481,\,-1.109]$ & $50/50$ & $
 \bottomrule
 \end{tabular}%
 }
-\end{table*}
+\end{table}
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_freedom_fit_chart.pdf}
     \caption{Mechanism condition versus validated target-fit error. The incidence-only condition is clearly separated from the three full-geometry ablations, showing that geometry beyond incidence contributes materially to target matching.}
     \label{fig:campaign_freedom_fit}
-\end{figure*}
+\end{figure}
 
 \subsection{Influence of target complexity and aerodynamic tradeoffs}
 
 The performance advantage of full geometry increases with target complexity (Table~\ref{tab:lobe_results}). The paired full-minus-incidence RMSE difference is $-0.97\,\mathrm{dB}$ for one-lobe targets, $-1.27\,\mathrm{dB}$ for two-lobe targets, and $-1.63\,\mathrm{dB}$ for three-lobe targets.
 
-\begin{table*}[htbp]
+\begin{table}[htbp]
 \centering
 \caption{Target-class dependence of the full-model advantage over incidence-only optimization. The table reports the final validated surrogate RMSE for each class and the paired full-minus-incidence RMSE difference. Negative differences indicate that the full model fits the target more closely.}
 \label{tab:lobe_results}
@@ -561,22 +753,22 @@ Three-lobe & 18 & $9.602\pm0.873$ & $7.975\pm1.046$ & $-1.626\;[-1.854,\,-1.399]
 \bottomrule
 \end{tabular}
 }
-\end{table*}
+\end{table}
 
 This acoustic benefit is accompanied by a small aerodynamic penalty (Fig.~\ref{fig:freedom_tradeoff}). Relative to \texttt{incidence}, the drag ratio increases by $0.0669$ for \texttt{full} (95\% CI: $[0.0188,\,0.1151]$, $p=0.022$) and by $0.0675$ for \texttt{no\_delay} ($p=0.016$), while \texttt{zero\_coherence} shows no statistically significant drag penalty ($p=1.00$). No significant differences were observed in lift-to-drag retention.
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_freedom_tradeoff_chart.pdf}
     \caption{Mechanism-level acoustic--aerodynamic tradeoff. Rightward movement indicates larger target-fit improvement relative to each ablation's own baseline, so the horizontal coordinate should be read descriptively rather than as a formal cross-ablation metric. Lower drag ratio is aerodynamically preferable. The full and no-delay conditions occupy similar acoustic positions and similar drag ratios, whereas the zero-coherence condition retains most of the acoustic benefit without the same drag-ratio increase.}
     \label{fig:freedom_tradeoff}
-\end{figure*}
+\end{figure}
 
 \subsection{Theory--surrogate validation}
 
 We aggregate 29{,}400 theory--surrogate comparison points across all 50 targets (Table~\ref{tab:validation_results}). The calibration subset (single frequency) yields an RMSE of $2.42\,\mathrm{dB}$ (MAE $1.83\,\mathrm{dB}$, bias $-0.21\,\mathrm{dB}$), while the held-out validation subset (five frequencies) has an RMSE of $5.70\,\mathrm{dB}$ (MAE $4.58\,\mathrm{dB}$, bias $4.05\,\mathrm{dB}$).
 
-\begin{table*}[htbp]
+\begin{table}[htbp]
 \centering
 \caption{Study-wide theory--surrogate validation for the full model, aggregated across all 50 targets. Calibration uses the rows marked \texttt{calibration} in the stored comparison files; validation uses the held-out rows marked \texttt{validation}.}
 \label{tab:validation_results}
@@ -589,11 +781,11 @@ Validation & 24{,}500 & $4.05$ & $4.58$ & $5.70$ \\
 All & 29{,}400 & $3.34$ & $4.12$ & $5.29$ \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 A high-resolution dense validation for target seed 19 (1{,}728 points, 288 observers, 64 spanwise points) confirms these findings with an overall RMSE of $5.34\,\mathrm{dB}$ ($2.81\,\mathrm{dB}$ calibration, $5.71\,\mathrm{dB}$ validation; Figs.~\ref{fig:validation_geometry} to~\ref{fig:validation_scatter}).
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
     \centering
     \begin{minipage}[t]{0.49\textwidth}
         \centering
@@ -605,30 +797,30 @@ A high-resolution dense validation for target seed 19 (1{,}728 points, 288 obser
     \end{minipage}
     \caption{Representative optimized feathered-wingtip geometry for the dense validation case at target seed 19. The plan and side views show the spanwise spacing, sweep distribution, out-of-plane curvature, and per-feather incidence variation available to the optimizer.}
     \label{fig:validation_geometry}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_directivity.pdf}
     \caption{Representative achieved-versus-target directivity for the dense validation case at target seed 19. The figure provides the most direct visual comparison between the desired directivity pattern and the surrogate-validated pattern obtained from the optimized geometry.}
     \label{fig:validation_directivity}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_scatter.pdf}
     \caption{High-resolution representative theory--surrogate scatter for the full-model geometry at target seed 19. Agreement is acceptable at the calibration frequency after scalar level calibration, but the wider spread in held-out points confirms that the model error is not captured by a single frequency-independent scale factor.}
     \label{fig:validation_scatter}
-\end{figure*}
+\end{figure}
 
 Discrepancy is highly frequency dependent (Fig.~\ref{fig:validation_error_by_frequency}). RMSE remains at $2.01$--$2.42\,\mathrm{dB}$ for 250--1000 Hz ($\kappa\approx1.4$--$5.5$), rises to $3.77\,\mathrm{dB}$ at 2000 Hz ($\kappa\approx11$), and increases to $9.99\,\mathrm{dB}$ at 8000 Hz ($\kappa\approx44$). The theoretical model is therefore reliable for low-to-mid-frequency directivity screening rather than absolute high-frequency prediction.
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_error_by_frequency.pdf}
     \caption{Representative full-model validation error by frequency. The same trend is visible in the aggregate results: low- and mid-frequency agreement is materially better than high-frequency agreement, indicating that the remaining model discrepancy is primarily spectral rather than purely directional.}
     \label{fig:validation_error_by_frequency}
-\end{figure*}
+\end{figure}
 
 \section{Discussion}
 
@@ -680,10 +872,6 @@ We have presented a positive-semidefinite stochastic array framework to analyze 
 
 In a 50-target optimization campaign, modifying full geometry achieved a $1.3\,\mathrm{dB}$ validated RMSE advantage over incidence-only control. However, the identical performance of the \texttt{full}, \texttt{no\_delay}, and \texttt{zero\_coherence} models indicates that this improvement is driven by geometric source redistribution and dipole rotation rather than coherent phase steering. Validation against an independent self-noise surrogate indicates that the model is reliable for low-to-mid-frequency screening ($\kappa \le 11$). Future work will focus on calibrating the closure constants using high-fidelity aerodynamic and acoustic data.
 
-\clearpage
-\onecolumn
-\appendix
-
 \begin{thebibliography}{99}
 
 \bibitem{Amiet1976}
@@ -722,6 +910,7 @@ NASA Technical Report, NTRS 20070010579, 2007.
 \end{thebibliography}
 
 \clearpage
+\appendix
 
 \section{Figure Index}
 
