@@ -497,7 +497,7 @@ To ensure the physical validity, numerical robustness, and physical interpretabi
 
 \subsection{Proposition 1 --- Power Spectral Density Non-negativity}
 
-Let the source cross-spectral matrix $\mat{C}_q(\omega) \in \mathbb{C}^{N \times N}$ be positive-semidefinite (PSD), denoted as $\mat{C}_q(\omega) \succeq 0$. We show that the far-field pressure power spectral density $S_{pp}(\vect{n},\omega) \ge 0$ for all frequencies $\omega$ and observer directions $\vect{n}$.
+Let the source cross-spectral matrix $\mat{C}_q(\omega) \in \mathbb{C}^{N \times N}$ be positive-semidefinite (PSD), denoted as $\mat{C}_q(\omega) \succeq 0$. We show that the far-field pressure power spectral density $S_{pp}(\vect{n},\omega) \ge 0$ for all frequencies $f = \omega / (2\pi) \ge 0$ and observer directions $\vect{n}$. This proof relies on the physical assumptions that the observer distance satisfies $R > 0$, the reference frequency satisfies $f_{\mathrm{ref}} > 0$, the coherence decay parameters satisfy $a_x, a_y, a_z > 0$, the source autospectra satisfy $\Phi_m(\omega) \ge 0$, and the frequency parameter satisfies $f \ge 0$.
 
 \paragraph{Proof.}
 Recall the discretized far-field pressure PSD given by Eq.~\ref{eq:discrete_psd}:
@@ -580,7 +580,7 @@ The elements $D_{mn}$ are evaluated as:
 \begin{equation*}
     D_{mn} = \exp\left[ - c \left\| \vect{x}'_m - \vect{x}'_n \right\|_2 \right],
 \end{equation*}
-where $c = f/f_{\mathrm{ref}} \ge 0$ is a non-negative scalar, and the scaled coordinate vector of source point $m$ is $\vect{x}'_m = [x_m/a_x, y_m/a_y, z_m/a_z]^T \in \mathbb{R}^3$. According to Schoenberg's theorem (1938), the radial basis kernel $k(\vect{x}', \vect{y}') = \exp\left( - c \|\vect{x}' - \vect{y}'\|_p \right)$ is positive-semidefinite in any Euclidean space for exponent $0 < p \le 2$. Setting $p = 1$ establishes that the exponential distance matrix is positive-semidefinite ($\mat{D} \succeq 0$) for any set of source coordinates and any frequency.
+where $c = f/f_{\mathrm{ref}} \ge 0$ is a non-negative scalar, and the scaled coordinate vector of source point $m$ is $\vect{x}'_m = [x_m/a_x, y_m/a_y, z_m/a_z]^T \in \mathbb{R}^3$ (which is well-defined under $a_x, a_y, a_z > 0$). According to Schoenberg's theorem, the radial basis function $k(\vect{x}', \vect{y}') = \exp\left( - c \|\vect{x}' - \vect{y}'\|_2^\alpha \right)$ is positive-semidefinite in any Euclidean space for exponent $0 < \alpha \le 2$. The implemented coherence model corresponds to $\alpha=1$, hence $\mat{D}\succeq0$ for any frequency $f \ge 0$ (with $c=f/f_{\mathrm{ref}}\ge0$). At the zero-frequency limit ($f = 0 \implies c=0$), the spatial correlation matrix reduces to $D_{mn} = 1$ (the all-ones matrix), which is positive-semidefinite.
 Therefore, by applying the Schur Product Theorem twice, we obtain $\mat{\Gamma} \succeq 0$, and consequently $\mat{C}_q(\omega) \succeq 0$ for all models. $\hfill \blacksquare$
 
 \subsection{Proposition 2 --- Hermitian Symmetry}
@@ -642,7 +642,7 @@ We verify this relation for each coherence model:
         \Gamma_{mn}(\omega).
     \end{align*}
 \end{enumerate}
-In all cases, the coherence function satisfies $\Gamma_{mn}(\omega) = \overline{\Gamma_{nm}(\omega)}$, confirming that the cross-spectral matrix $\mat{C}_q(\omega)$ is Hermitian. $\hfill \blacksquare$
+In all cases, the coherence function satisfies $\Gamma_{mn}(\omega) = \overline{\Gamma_{nm}(\omega)}$, confirming that the cross-spectral matrix $\mat{C}_q(\omega)$ is Hermitian. A direct physical consequence of this Hermitian symmetry is that the quadratic form $\vect{a}^H \mat{C}_q \vect{a}$ is guaranteed to be real-valued ($\vect{a}^H \mat{C}_q \vect{a} \in \mathbb{R}$), ensuring that the predicted far-field pressure power spectral density $S_{pp}(\vect{n},\omega)$ in Eq.~\ref{eq:discrete_psd} is always a real, physically interpretable quantity. $\hfill \blacksquare$
 
 \subsection{Proposition 3 --- Grid Convergence}
 
@@ -650,7 +650,7 @@ We demonstrate that the far-field pressure power spectral density $S_{pp}^{(n_\e
 \begin{equation*}
     \lim_{n_\eta \to \infty} S_{pp}^{(n_\eta)}(f,\vect{n}) = S_{pp}^{(\infty)}(f,\vect{n}).
 \end{equation*}
-Furthermore, the integration error decays at an asymptotic quadratic rate $O(n_\eta^{-2})$, corresponding to the second-order convergence of the trapezoidal rule.
+The tested configurations exhibit near-second-order convergence over the examined frequency, observer, and geometry set, corresponding to the convergence characteristics of the trapezoidal rule.
 
 \paragraph{Numerical Verification.}
 We evaluate the far-field spectrum for the default wingtip geometry using the baseline exponential coherence model. The test case uses an overhead observer ($\vect{n} = [0, 0, 1]^T$) and an acoustic frequency $f = 1000$ Hz. The spanwise parametric coordinate $\eta \in [0, 1]$ is discretized using a uniform grid of $n_\eta$ intervals, yielding a total of $M = N \times (n_\eta + 1)$ source points across the $N = 7$ wingtip feathers.
@@ -683,14 +683,14 @@ $n_\eta$ & Grid Size ($M$) & $S_{pp}^{(n_\eta)}\,(\mathrm{Pa}^2/\mathrm{Hz})$ & 
 \end{tabular}
 \end{table}
 
-The empirical rate $r$ approaches the theoretical asymptotic rate of $2.00$ as $n_\eta$ increases. This confirms that the numerical integration scheme preserves the second-order convergence of the trapezoidal rule, ensuring that a choice of $n_\eta = 32$ during the optimization campaign provides a mathematically sound balance of speed and numerical accuracy (representing a relative truncation error of less than $0.06\%$ relative to the converged limit at $n_\eta = 512$).
+The empirical rate $r$ approaches the theoretical asymptotic rate of $2.00$ as $n_\eta$ increases. This confirms that the numerical integration scheme preserves the second-order convergence of the trapezoidal rule for the tested overhead configuration, ensuring that a choice of $n_\eta = 32$ during the optimization campaign provides a mathematically sound balance of speed and numerical accuracy (representing a relative truncation error of less than $0.06\%$ relative to the converged limit at $n_\eta = 512$ for the overhead observer). Across the full parameter space of geometries, frequencies, and coherence models (evaluated using a spherical grid with $N_\eta = 256$ as reference), the RMS SPL error converges from $13.18\,\mathrm{dB}$ at $n_\eta=8$ to $1.89\,\mathrm{dB}$ at $n_\eta=128$, with the empirical convergence rate reaching $2.32$ between $n_\eta=16$ and $n_\eta=32$, and $0.57$ between $n_\eta=32$ and $n_\eta=64$, reflecting local coordinate variations and phase cancellations across the array.
 
 \subsection{Proposition 4 --- Calibration Separability}
 
 We establish that the absolute sound pressure level mismatch between the semi-analytical acoustic model and the distributed boundary-layer self-noise surrogate simulation is represented by a uniform scalar level offset that is separable from the relative directivity shape matching.
 
 \paragraph{Proof and Verification.}
-Due to chord-integrated source strength approximations in the compact-source formulation (Level 3 model) compared to the distributed surface representation in the high-fidelity surrogate simulation, the uncalibrated theoretical model underpredicts the absolute acoustic pressure levels. We model this mismatch as a uniform scalar offset. Let $S_{pp}(\vect{n},\omega)$ be the uncalibrated far-field pressure power spectral density (PSD), and let:
+Due to chord-integrated source strength approximations in the compact-source formulation (Level 3 model) compared to the distributed surface representation in the distributed low-order self-noise surrogate simulation, the uncalibrated theoretical model underpredicts the absolute acoustic pressure levels. We model this mismatch as a uniform scalar offset. Let $S_{pp}(\vect{n},\omega)$ be the uncalibrated far-field pressure power spectral density (PSD), and let:
 \begin{equation*}
     \tilde{S}_{pp}(\vect{n},\omega) = C_{\mathrm{cal}} S_{pp}(\vect{n},\omega)
 \end{equation*}
@@ -723,26 +723,28 @@ Aggregated & Calibration & $-14.81$ & $14.81$ & $15.08$ & $-0.00$ & $2.14$ & $2.
 }
 \end{table}
 
-Before calibration, both splits show a large negative bias (ranging from $-10.25\,\mathrm{dB}$ to $-22.00\,\mathrm{dB}$) and high RMSE values due to the uniform underprediction of the source strength. After applying the scalar level calibration $\Delta L_{\mathrm{offset}}$, the bias in the calibration split is reduced to exactly $-0.00\,\mathrm{dB}$, and the calibration RMSE drops to $2.46\,\mathrm{dB}$ (seed 19) and $2.77\,\mathrm{dB}$ (study-wide). On the held-out validation split (five frequencies), the calibrated RMSE drops to $5.67\,\mathrm{dB}$ (seed 19) and $6.11\,\mathrm{dB}$ (study-wide). 
+Before calibration, both splits show a large negative bias (ranging from $-10.25\,\mathrm{dB}$ to $-22.00\,\mathrm{dB}$) and high RMSE values due to the uniform underprediction of the source strength. After applying the scalar level calibration $\Delta L_{\mathrm{offset}}$, the bias in the calibration split is reduced to exactly $-0.00\,\mathrm{dB}$, and the calibration RMSE drops to $2.46\,\mathrm{dB}$ (seed 19) and $2.77\,\mathrm{dB}$ (study-wide). On the held-out validation split (five frequencies), the calibrated RMSE drops to $5.67\,\mathrm{dB}$ (seed 19) and $6.11\,\mathrm{dB}$ (study-wide).
 
-This uniform reduction of error confirms that the level mismatch is separable from relative directivity shape matching. This mathematically and numerically justifies optimizing relative directivity shapes with the fast compact-source formulation, as relative directivity lobes are preserved. $\hfill \blacksquare$
+To evaluate the impact on directivity shape independently of the absolute level, we compute centered shape metrics where the mean angular level is subtracted. The study-wide centered shape RMSE remains exactly invariant under scalar calibration, yielding $2.75\,\mathrm{dB}$ on the calibration split and $4.05\,\mathrm{dB}$ on the validation split. Similarly, the Pearson correlation coefficient between predicted and surrogate directivity shapes is invariant, showing a high shape similarity of $\rho = 0.9434$ (calibration split) and $\rho = 0.8235$ (validation split).
+
+Scalar calibration removes the dominant calibration-split offset and preserves normalized directivity by construction. The remaining held-out validation bias of $4.56\,\mathrm{dB}$ and RMSE of $6.11\,\mathrm{dB}$ show that additional frequency- and mechanism-dependent discrepancies remain. Nonetheless, the invariance and strength of the shape metrics mathematically and numerically justify optimizing relative directivity shapes with the fast compact-source formulation, as relative directivity lobes are preserved. $\hfill \blacksquare$
 
 \subsection{Proposition 5 --- Phase Mechanism}
 
-We show that directivity control in feathered wingtips is dominated by geometric source-strength redistribution and local dipole rotation rather than inter-feather phase interference (phase steering).
+For the tested optimization campaign, the evidence indicates that directivity control is dominated by geometric amplitude redistribution and local dipole rotation rather than inter-feather phase steering.
 
-\paragraph{Proof and Verification.}
-We analyze this control mechanism by examining the optimization campaign results and systematically removing phase offsets. First, if inter-feather phase steering were the primary mechanism, removing phase features would significantly degrade directivity control. However, Table~\ref{tab:campaign_results} shows that the validated target-fit RMSE is statistically identical among the three full-geometry configurations:
+\paragraph{Ablation Evidence.}
+We analyze this control mechanism by examining the optimization campaign results and systematically removing phase features. First, if inter-feather phase steering were the primary mechanism, removing phase features would significantly degrade directivity control. However, Table~\ref{tab:campaign_results} shows that the validated target-fit RMSE is statistically equivalent among the three full-geometry configurations:
 \begin{align*}
     \text{Validated RMSE (\texttt{full})} &= 9.157 \pm 2.404\,\mathrm{dB}, \\
     \text{Validated RMSE (\texttt{no\_delay})} &= 9.109 \pm 2.578\,\mathrm{dB}, \\
     \text{Validated RMSE (\texttt{zero\_coherence})} &= 9.164 \pm 2.620\,\mathrm{dB}.
 \end{align*}
-Removing the convective delay ($b_\alpha = 0$) or the cross-coherence phase terms entirely (by setting $\Gamma_{mn} = \delta_{mn}$) does not degrade directivity control performance.
+To test this equivalence rigorously, we perform a Two One-Sided Test (TOST) with an equivalence margin of $\delta = 0.25\,\mathrm{dB}$ across the 50 targets. The paired difference between the \texttt{full} and \texttt{no\_delay} configurations is $0.048\,\mathrm{dB}$ (95\% CI: $[-0.118, 0.214]\,\mathrm{dB}$, TOST $p = 0.0091$), and between the \texttt{full} and \texttt{zero\_coherence} configurations is $-0.006\,\mathrm{dB}$ (95\% CI: $[-0.199, 0.187]\,\mathrm{dB}$, TOST $p = 0.0072$). Both comparisons are statistically equivalent within the $\pm0.25\,\mathrm{dB}$ margin, confirming that removing convective delay or cross-coherence does not degrade the optimizer's target-matching capability.
 
-Second, we systematically evaluate the change in predicted far-field sound pressure level (SPL) when phase offsets are removed from the optimized geometries. For each of the 50 optimized targets in the \texttt{full} model, we compute the far-field SPL using both the partially coherent model (\texttt{exponential}) and the uncorrelated model (\texttt{zero} coherence). Evaluating these on a dense spherical observer grid at $1000\,\mathrm{Hz}$ yields a study-wide mean SPL difference of $5.958\,\mathrm{dB}$ (with a minimum difference of $5.095\,\mathrm{dB}$ and a maximum of $7.546\,\mathrm{dB}$). 
+Second, we analyze the effect of removing phase coherence from the optimized geometries. For each of the 50 optimized \texttt{full} configurations, we evaluate the far-field SPL at $1000\,\mathrm{Hz}$ on a dense spherical observer grid using both the partially coherent model (\texttt{exponential}) and the uncorrelated model (\texttt{zero\_coherence}). This direct ablation of phase coherence yields a study-wide mean SPL shift of $\bar{\Delta L} = 0.907\,\mathrm{dB}$ but a large angular variation with a standard deviation of $\sigma_\Omega(\Delta L) = 5.883\,\mathrm{dB}$ (mean centered shape RMSE of $5.863\,\mathrm{dB}$ and correlation of $\rho = 0.8422$).
 
-This difference represents the uniform loss of phase interference and cancellation terms when converting from a coherent to an incoherent addition of source segments. Because the shape-matching error (validated target-fit RMSE) remains statistically indistinguishable across the ablations, and because removing phase offsets shifts the absolute SPL uniformly rather than changing the relative lobe shapes, we conclude that feathered-wingtip directivity control is dominated by geometric amplitude redistribution (spanwise chord and spacing variations) and local dipole rotation (feather incidence) rather than inter-feather phase steering. $\hfill \blacksquare$
+This indicates that removing phase coherence from a fixed optimized geometry significantly disrupts its local interference patterns and alters its directivity shape. However, because the optimization campaign achieves equivalent target-fit performance under zero coherence, we conclude that the design space allows the optimizer to re-synthesize directivity patterns through alternative geometric mechanisms---specifically, spanwise amplitude redistribution and dipole rotation via feather incidence---rendering inter-feather phase steering non-dominant for directivity control. $\hfill \blacksquare$
 
 \section{Results}
 

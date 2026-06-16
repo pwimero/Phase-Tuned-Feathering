@@ -1,0 +1,46 @@
+{
+  "resolutions": [
+    8,
+    16,
+    32,
+    64,
+    128
+  ],
+  "metrics_by_resolution": {
+    "8": {
+      "max_relative_error": 26898.177734375,
+      "rms_relative_error": 1507.2319687889487,
+      "max_spl_error_db": 44.29738998413086,
+      "rms_spl_error_db": 13.175064004772818,
+      "empirical_rate": null
+    },
+    "16": {
+      "max_relative_error": 78519.59375,
+      "rms_relative_error": 2986.3283379231366,
+      "max_spl_error_db": 48.94983673095703,
+      "rms_spl_error_db": 10.349597601807172,
+      "empirical_rate": -0.9864713238924799
+    },
+    "32": {
+      "max_relative_error": 19374.794921875,
+      "rms_relative_error": 596.3579701050027,
+      "max_spl_error_db": 42.872596740722656,
+      "rms_spl_error_db": 7.8111281570528375,
+      "empirical_rate": 2.324122305631123
+    },
+    "64": {
+      "max_relative_error": 13997.4404296875,
+      "rms_relative_error": 401.6138185670836,
+      "max_spl_error_db": 41.46080017089844,
+      "rms_spl_error_db": 5.089076220504493,
+      "empirical_rate": 0.5703696736655584
+    },
+    "128": {
+      "max_relative_error": 5.622653007507324,
+      "rms_relative_error": 0.6287634601349608,
+      "max_spl_error_db": 12.010208129882812,
+      "rms_spl_error_db": 1.892188893974088,
+      "empirical_rate": 9.319075815006514
+    }
+  }
+}

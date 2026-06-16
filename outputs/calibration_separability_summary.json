@@ -22,5 +22,19 @@
       "mae_db": 5.014283666241272,
       "rmse_db": 6.1143262330832355
     }
+  },
+  "shape_metrics": {
+    "calibration": {
+      "mean_rmse_shape_before": 2.74618346358847,
+      "mean_rmse_shape_after": 2.74618346358847,
+      "mean_correlation_before": 0.9433541683396869,
+      "mean_correlation_after": 0.9433541683396871
+    },
+    "validation": {
+      "mean_rmse_shape_before": 4.045464848774532,
+      "mean_rmse_shape_after": 4.045464848774532,
+      "mean_correlation_before": 0.8235172286874627,
+      "mean_correlation_after": 0.8235172286874628
+    }
   }
 }
