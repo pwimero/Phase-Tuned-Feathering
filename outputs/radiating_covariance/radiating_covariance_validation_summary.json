@@ -20,12 +20,36 @@
   },
   "campaign_reanalysis": {
     "case_count": 50,
+    "control_dimension_1e2": {
+      "ci95_half_width": 0.26320000000000005,
+      "mean": 8.58,
+      "std": 0.9495433918790782
+    },
     "mean_control_dimension_1e2": 8.58,
     "mean_phase_ablation_rmse_db": 7.929233251658174,
     "mean_radiating_phase_steerability": 0.8109991302965541,
     "mean_target_projection_q_1e2": 0.8560840610161151,
+    "phase_ablation_rmse_db": {
+      "ci95_half_width": 0.594541468697965,
+      "mean": 7.929233251658174,
+      "std": 2.1449199194537782
+    },
     "phase_effect_vs_pr_r2": 0.2137753502528391,
-    "rmse_vs_uncontrollable_target_energy_r2": 0.03756948319800235
+    "radiating_phase_steerability": {
+      "ci95_half_width": 0.01256240536729936,
+      "mean": 0.8109991302965541,
+      "std": 0.04532123481240643
+    },
+    "rmse_vs_uncontrollable_target_energy_r2": 0.03756948319800235,
+    "target_projection_q_1e2": {
+      "ci95_half_width": 0.0387758608328746,
+      "mean": 0.8560840610161151,
+      "std": 0.13989119459832386
+    }
+  },
+  "controlled_mechanism_examples": {
+    "all_expected_labels_matched": true,
+    "case_count": 4
   },
   "diagonal_no_phase": {
     "case_count": 200,

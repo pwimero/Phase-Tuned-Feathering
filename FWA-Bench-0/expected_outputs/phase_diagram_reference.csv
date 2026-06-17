@@ -1,4 +1,4 @@
-n_sources,ks,coherence_length_over_spacing,raw_coherence_availability,radiating_phase_steerability,radiating_covariance_fraction,phase_ablation_rmse_db,dominant_mechanism
+n_sources,ks,coherence_length_over_spacing,raw_coherence_availability,radiating_phase_steerability,radiating_covariance_gain,phase_ablation_rmse_db,dominant_mechanism
 7,0.01,0.01,4.870722786029202e-44,6.377540182767903e-44,1.0,0.0,compact
 7,0.01,0.014677992676220698,3.379893277835657e-30,4.425504414805098e-30,1.0,0.0,compact
 7,0.01,0.021544346900318832,9.096564976156616e-21,1.1910698105628168e-20,1.0,0.0,compact

@@ -47,9 +47,17 @@ class ModalRadiationResult:
 class MechanismMetrics:
     raw_coherence_availability: float
     radiating_phase_steerability: float
-    radiating_covariance_fraction: float
+    radiating_covariance_gain: float
     phase_ablation_rmse_db: float
     offdiag_bound_ratio_max: float
+
+    @property
+    def radiating_covariance_fraction(self) -> float:
+        """Backward-compatible alias for the former name.
+
+        The quantity is a radiation-weighted gain and is not bounded by one.
+        """
+        return self.radiating_covariance_gain
 
 
 @dataclass(frozen=True)
@@ -190,13 +198,18 @@ def radiating_phase_steerability(cq: Array, operator: Array) -> float:
     return float(numerator / denominator)
 
 
-def radiating_covariance_fraction(cq: Array, operator: Array) -> float:
+def radiating_covariance_gain(cq: Array, operator: Array) -> float:
     source_energy = float(np.trace(cq).real)
     if source_energy <= 1.0e-300:
         return 0.0
     normalized_operator = normalize_radiation_operator(operator)
     radiating_energy = float(np.trace(normalized_operator @ cq).real)
     return radiating_energy / source_energy
+
+
+def radiating_covariance_fraction(cq: Array, operator: Array) -> float:
+    """Backward-compatible alias for :func:`radiating_covariance_gain`."""
+    return radiating_covariance_gain(cq, operator)
 
 
 def phase_ablation_rmse_db(
@@ -262,7 +275,7 @@ def mechanism_metrics(
     return MechanismMetrics(
         raw_coherence_availability=raw_coherence_availability(cq),
         radiating_phase_steerability=radiating_phase_steerability(cq, operator),
-        radiating_covariance_fraction=radiating_covariance_fraction(cq, operator),
+        radiating_covariance_gain=radiating_covariance_gain(cq, operator),
         phase_ablation_rmse_db=phase_ablation_rmse_db(
             grid,
             observers,

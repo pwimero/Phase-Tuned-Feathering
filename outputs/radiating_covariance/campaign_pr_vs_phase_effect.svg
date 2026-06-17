@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="520" viewBox="0 0 760 520">
 <rect width="100%" height="100%" fill="#fff"/>
-<text x="85" y="34" font-family="Arial" font-size="22" fill="#111">Radiating Phase-Steerability Predicts Phase Ablation</text>
+<text x="85" y="34" font-family="Arial" font-size="22" fill="#111">Radiating Phase-Steerability and Phase Ablation</text>
 <line x1="85" y1="450" x2="730" y2="450" stroke="#222"/>
 <line x1="85" y1="60" x2="85" y2="450" stroke="#222"/>
 <text x="380.0" y="500" font-family="Arial" font-size="15" text-anchor="middle">Radiating phase-steerability P_R</text>

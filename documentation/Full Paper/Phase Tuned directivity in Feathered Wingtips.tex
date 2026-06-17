@@ -59,7 +59,7 @@
 \maketitle
 
 \begin{abstract}
-Feathered wingtips and other segmented lifting-surface terminations are often interpreted as acoustic phased arrays, but directivity changes can also arise from source-strength redistribution, local dipole rotation, decoherence, and radiation filtering. This paper develops a theory-only radiating-covariance framework for distinguishing these mechanisms. The far-field spectrum is written as a positive-semidefinite quadratic form, $S_{pp}=\vect{a}^{H}\mat{C}_q\vect{a}$, and then decomposed into independently radiating source-covariance eigenmodes, $S_{pp}=\sum_r \lambda_r|\vect{a}^{H}\vect{u}_r|^2/(4\pi R)^2$. This identity shows that geometry alone does not determine directivity control; control depends on how source-covariance modes project onto the acoustic radiation operator. Exact computational validation over 1000 randomized covariance cases gives no PSD, Hermitian, modal-identity, or off-diagonal-bound failures. Canonical benchmarks recover diagonal no-phase behavior to $5.8\times10^{-16}$ relative error and a rank-one coherent array factor to $5.6\times10^{-16}$ normalized error. A 625-case partial-coherence sweep produces a mechanism phase diagram in which phase-dominant behavior appears only when geometric phase separation and radiating off-diagonal covariance are both present. Reanalysis of the 50-target feathered-wingtip campaign shows that optimized full-model geometries retain substantial fixed-geometry phase sensitivity ($\overline{\mathcal P_R}=0.811$, phase-ablation RMSE $7.93\,\mathrm{dB}$), while zero-coherence reoptimization remains statistically equivalent to the full model. Thus phase interference is active but not uniquely controlling in the tested regime: the design space can compensate through alternative source-covariance and radiation modes. The released FWA-Bench-0 package provides exact, canonical, transition, and feathered-wingtip benchmark cases for reproducing the computational validation.
+Feathered wingtips and other segmented lifting-surface terminations are often interpreted as acoustic phased arrays, but directivity changes can also arise from source-strength redistribution, local dipole rotation, decoherence, and radiation filtering. This paper develops a theory-only radiating-covariance framework for identifying which mechanisms are available under linear far-field stochastic-source assumptions. The far-field spectrum is written as a positive-semidefinite quadratic form, $S_{pp}=\vect{a}^{H}\mat{C}_q\vect{a}$, and decomposed into independently radiating source-covariance eigenmodes, $S_{pp}=\sum_r \lambda_r|\vect{a}^{H}\vect{u}_r|^2/(4\pi R)^2$. This identity shows that directivity control depends on the projection of source-covariance modes through the radiation operator. Exact computational validation over 1000 randomized covariance cases gives no PSD, Hermitian, modal-identity, or off-diagonal-bound failures. Canonical benchmarks recover diagonal no-phase behavior to $5.8\times10^{-16}$ relative error and a rank-one coherent array factor to $5.6\times10^{-16}$ normalized error. A 625-case partial-coherence sweep produces a mechanism phase diagram in which phase-dominant behavior requires both geometric phase separation and radiating off-diagonal covariance. Reanalysis of the 50-target feathered-wingtip campaign shows that optimized full-model geometries retain substantial fixed-geometry phase sensitivity ($\overline{\mathcal P_R}=0.811$, phase-ablation RMSE $7.93\,\mathrm{dB}$), while zero-coherence reoptimization remains statistically equivalent to the full model. Thus phase interference is active but not uniquely controlling in the tested regime: the design space can compensate through alternative source-covariance and radiation modes. FWA-Bench-0 provides exact, canonical, transition, and feathered-wingtip benchmark cases intended for release with the final manuscript.
 \end{abstract}
 
 \section{Introduction}
@@ -72,7 +72,7 @@ The primary contributions of this work are:
 \begin{enumerate}
     \item A positive-semidefinite radiating-covariance identity that decomposes far-field pressure spectra into independently radiating source-covariance eigenmodes.
     \item Formal limiting-case theorems for PSD admissibility, diagonal no-phase behavior, rank-one coherent-array behavior, off-diagonal interference bounds, compact phase weakness, and decoherence limits.
-    \item Radiation-weighted mechanism indices, including raw coherence availability $\mathcal P_0$, radiating phase-steerability $\mathcal P_R$, radiating covariance fraction $\mathcal R$, and spherical-harmonic directivity control dimension $D_{\mathrm{control}}$.
+    \item Radiation-weighted mechanism diagnostics, including raw coherence availability $\mathcal P_0$, radiating phase-steerability $\mathcal P_R$, radiation-weighted covariance gain $G_R$, and local spherical-harmonic directivity control dimension $D_{\mathrm{control}}$.
     \item Exact computational validation and canonical benchmarks showing recovery of incoherent source-mixer and coherent phased-array limits.
     \item A partial-coherence mechanism phase diagram and a reanalysis of the existing 50-target feathered-wingtip campaign through the radiating-covariance metrics.
     \item FWA-Bench-0, an open analytical benchmark package containing exact array, diagonal, partial-coherence, and feathered-wingtip cases.
@@ -82,17 +82,26 @@ We emphasize that this Version 1 paper is theoretical and computational. It does
 
 \section{Literature Review}
 
-This work builds upon three established research areas: analytical aeroacoustic loading-noise theory, bio-inspired edge-noise control, and acoustic-array optimization. Classical aerodynamic sound theories, including Curle's loading noise extension of Lighthill's analogy~\cite{Curle1955} and Farassat's formulations~\cite{Farassat2007}, describe acoustic radiation from unsteady surface forces. Trailing-edge and self-noise models~\cite{Amiet1976,Howe1978,Brooks1989} establish how turbulent boundary-layer scattering radiates broadband noise. Furthermore, prior studies on serrated edges demonstrate that edge geometry alters directivity and that destructive interference can reduce far-field noise at specific frequencies and angles~\cite{Lyu2016SerratedTE}.
+\subsection{Classical loading and self-noise models}
+Classical aerodynamic sound theories, including Curle's loading-noise extension of Lighthill's analogy~\cite{Curle1955} and Farassat's formulations~\cite{Farassat2007}, describe radiation from unsteady surface forces. Trailing-edge and self-noise models~\cite{Amiet1976,Howe1978,Brooks1989} establish how turbulent boundary-layer scattering radiates broadband noise. In this paper, BPM/TNO-inspired quantities are used only as low-order consistency checks for relative directivity, not as experimental truth.
 
-Rather than proposing a new acoustic analogy, we implement a closure-based loading-noise surrogate to evaluate relative directivity changes. Because feathered geometries consist of spatially separated, differently oriented source regions, the far-field radiation depends on both local source strength and spatial cross-coherence. While ad-hoc cosine-summed cross-term models can yield non-physical negative power spectral densities (PSDs) under inconsistent coherence closures, we employ a Hermitian positive-semidefinite matrix construction. This formulation guarantees non-negative spectra across all frequencies and observer directions, enabling mathematically consistent comparisons between the zero-coherence, no-delay, and full-coherence limits.
+\subsection{Serrations and phase-reference cases}
+Serrated trailing-edge studies show that edge geometry can alter directivity and that interference can reduce noise at selected frequencies and angles~\cite{Lyu2016SerratedTE}. The present framework does not deny that phase-interference regime. Instead, it recovers it exactly in the rank-one coherent-array limit and then asks whether feathered wingtips operate in that regime.
 
-Finally, we utilize thin-airfoil lift and drag proxies as relative screening metrics. These proxies estimate the aerodynamic penalties associated with directivity-optimized mutations without asserting absolute aerodynamic performance.
+\subsection{Bio-inspired segmented surfaces}
+Feathered, fringed, porous, compliant, and serrated biological surfaces can modify noise through several mechanisms: source suppression, source redistribution, dipole rotation, decoherence, scattering, and phase interference. Observing a changed directivity pattern is therefore insufficient to identify the active mechanism.
+
+\subsection{Source coherence and radiating modes}
+For segmented sources, the far field depends on the source cross-spectral density as well as geometry. A Hermitian positive-semidefinite source covariance avoids non-physical negative spectra and allows coherent, partially coherent, and incoherent limits to be compared in one operator form.
+
+\subsection{Mechanism-selection gap}
+Existing low-order models can predict relative directivity trends, but they rarely provide a criterion for whether the available control channel is phase interference, source redistribution, dipole rotation, or decoherence. This paper addresses that gap with radiating-covariance diagnostics and exact limiting-case benchmarks.
 
 \section{Methodology}
 
 \subsection{Radiating-covariance operator identity}
 
-The central object in this paper is the observer-side quadratic form:
+Let $N_f$ be the number of feathers and let $n_\eta+1$ be the number of quadrature points on each feather. The discretized source vector has length $N_s=N_f(n_\eta+1)$, so $\mat{C}_q(\omega)\in\mathbb{C}^{N_s\times N_s}$ and $\vect{a}(\vect{n},\omega)\in\mathbb{C}^{N_s}$. In compact benchmark examples, $N_s=N_f$. The central object in this paper is the observer-side quadratic form:
 \begin{equation}
     S_{pp}(\vect{n},\omega)
     =
@@ -128,7 +137,7 @@ then Eq.~\ref{eq:radiating_covariance_identity} becomes:
 \end{equation}
 This modal radiation identity is the theoretical core of the paper. The eigenvalue $\lambda_r$ measures the strength of source covariance mode $r$, the eigenvector $\vect{u}_r$ describes its coherent spatial structure, and $\left|\vect{a}^{H}\vect{u}_r\right|^2$ measures how efficiently that source mode radiates in observer direction $\vect{n}$. Directivity control is therefore governed by the interaction between geometry and radiating source-covariance modes, not by geometry alone.
 
-For an observer set $\{\vect{n}_o,w_o\}$, define the integrated radiation operator:
+Let $\operatorname{Diag}(\mat{C}_q)$ denote the diagonal matrix containing the diagonal entries of $\mat{C}_q$. For an observer set $\{\vect{n}_o,w_o\}$ with nonnegative quadrature weights, define the integrated radiation operator:
 \begin{equation}
     \mat{W}(\omega)
     =
@@ -137,13 +146,15 @@ For an observer set $\{\vect{n}_o,w_o\}$, define the integrated radiation operat
     \vect{a}_o(\omega)\vect{a}_o^{H}(\omega),
 \label{eq:radiation_operator}
 \end{equation}
-where $\vect{a}_o=\vect{a}(\vect{n}_o,\omega)$. The raw off-diagonal coherence availability is:
+where $\vect{a}_o=\vect{a}(\vect{n}_o,\omega)$. Since $\mat{W}$ is a nonnegative weighted sum of rank-one Hermitian positive-semidefinite matrices, $\mat{W}\succeq0$. Thus $\mat{W}^{1/2}$ denotes the unique Hermitian positive-semidefinite square root; numerically it is computed by eigendecomposition with small negative roundoff eigenvalues clipped to zero.
+
+The raw off-diagonal coherence availability is:
 \begin{equation}
     \mathcal P_0(\omega)
     =
     \frac{
     \left\|
-        \mat{C}_q-\operatorname{diag}(\mat{C}_q)
+        \mat{C}_q-\operatorname{Diag}(\mat{C}_q)
     \right\|_F
     }{
     \left\|
@@ -168,22 +179,23 @@ The radiation-weighted phase-steerability index is:
     \qquad
     \mat{C}_{\mathrm{off}}
     =
-    \mat{C}_q-\operatorname{diag}(\mat{C}_q).
+    \mat{C}_q-\operatorname{Diag}(\mat{C}_q).
 \label{eq:pr}
 \end{equation}
-Unlike $\mathcal P_0$, $\mathcal P_R$ penalizes coherent covariance that exists in source space but projects weakly onto the far-field radiation operator. With $\mat{W}$ normalized to unit mean eigenvalue, we also define the radiating covariance fraction:
+Unlike $\mathcal P_0$, $\mathcal P_R$ penalizes coherent covariance that exists in source space but projects weakly onto the far-field radiation operator. With $\mat{W}$ normalized to unit mean eigenvalue, we also define the radiation-weighted covariance gain:
 \begin{equation}
-    \mathcal R(\omega)
+    G_R(\omega)
     =
     \frac{
         \operatorname{tr}(\mat{W}\mat{C}_q)
     }{
         \operatorname{tr}(\mat{C}_q)
     }.
-\label{eq:radiating_fraction}
+\label{eq:radiating_gain}
 \end{equation}
+$G_R$ is not a probability fraction and need not be bounded by one; it measures radiation visibility after the chosen normalization of $\mat{W}$.
 
-Finally, directivity is projected onto spherical harmonics:
+Observer weights are normalized to $\sum_o w_o=1$ in the numerical diagnostics. The operator identities use linear power spectra. The local controllability calculation projects centered, peak-normalized decibel directivity onto spherical harmonics:
 \begin{equation}
     L(\vect{n},\omega)
     =
@@ -200,7 +212,7 @@ and the geometry-to-directivity controllability Jacobian is:
     \frac{\partial b_{\ell m}}{\partial \mu_j}.
 \label{eq:controllability_jacobian}
 \end{equation}
-The directivity control dimension is the numerical rank:
+The directivity control dimension is the local linear numerical rank:
 \begin{equation}
     D_{\mathrm{control}}(\omega)
     =
@@ -213,10 +225,12 @@ where $\sigma_i$ are singular values of $J$ and $\epsilon$ is a declared toleran
 \begin{equation}
     Q_T
     =
-    \frac{\|P_JT\|_2^2}{\|T\|_2^2}
+    \frac{\|P_JT\|_2^2}{\|T\|_2^2},
+    \qquad
+    P_J=U_\epsilon U_\epsilon^H
 \label{eq:target_projection}
 \end{equation}
-measures how much of a target directivity lies in the locally controllable subspace.
+measures how much of the centered, peak-normalized target directivity coefficient vector $T$ lies in the locally controllable subspace. Here $U_\epsilon$ contains the left singular vectors of $J$ whose singular values satisfy $\sigma_i/\sigma_1>\epsilon$. $Q_T$ is frequency-specific and local; it is not a complete predictor of global nonlinear optimization success.
 
 \subsection{Physical assumptions and geometry representation}
 
@@ -259,14 +273,14 @@ Root vertical translation, tip sweep, and tip vertical curvature across the feat
 \begin{equation}
     g(s)=g_1L_1(s)+g_mL_m(s)+g_7L_7(s),
 \end{equation}
-where $g_1$, $g_m$, and $g_7$ represent control points for the first, middle, and seventh feathers. The seven feather incidence values $\alpha_i$ are represented in an orthonormal cosine basis with $N_b = N = 7$ modes (one per feather, forming a full-rank square system):
+where $g_1$, $g_m$, and $g_7$ represent control points for the first, middle, and seventh feathers. The seven feather incidence values $\alpha_i$ are represented in an orthonormal cosine basis with $N_b = N_f = 7$ modes (one per feather, forming a full-rank square system):
 \begin{equation}
     \alpha_i =
     \sum_{m=0}^{N_b-1}
     B_{im}a_m,
 \label{eq:incidence_basis}
 \end{equation}
-where $a_m$ are incidence coefficients and $B_{im}$ is the $N \times N_b$ basis matrix.
+where $a_m$ are incidence coefficients and $B_{im}$ is the $N_f \times N_b$ basis matrix.
 
 \subsection{Acoustic model hierarchy}
 
@@ -278,7 +292,7 @@ Each feather is treated as a compact source at $\vect{r}_i$. For observer direct
     p_1(\vect{n},\omega)
     =
     \frac{1}{4\pi R}
-    \sum_{i=1}^{N}
+    \sum_{i=1}^{N_f}
     A_i(\vect{n},\omega)
     q_i(\omega)
     \exp\left[
@@ -293,7 +307,7 @@ Each feather is treated as a compact source at $\vect{r}_i$. For observer direct
     =
     \frac{1}{(4\pi R)^2}
     \left|
-        \sum_{i=1}^{N}
+        \sum_{i=1}^{N_f}
         A_i q_i
         \exp\left[
             \ii k\vect{n}\cdot\vect{r}_i
@@ -308,7 +322,7 @@ To account for spatial distribution, we integrate along each feather's source li
     p_2(\vect{n},\omega)
     =
     \frac{1}{4\pi R}
-    \sum_{i=1}^{N}
+    \sum_{i=1}^{N_f}
     \int_0^1
     H_i(\eta,\vect{n},\omega)
     q_i(\eta,\omega)
@@ -336,8 +350,8 @@ The far-field pressure power spectral density (PSD) becomes:
     S_{pp}(\vect{n},\omega)
     &=
     \frac{1}{(4\pi R)^2}
-    \sum_{i=1}^{N}
-    \sum_{j=1}^{N}
+    \sum_{i=1}^{N_f}
+    \sum_{j=1}^{N_f}
     \int_0^1
     \int_0^1
     H_i(\eta,\vect{n},\omega)
@@ -364,7 +378,7 @@ Discretizing the quadrature yields the quadratic form:
     \vect{a}(\vect{n},\omega),
 \label{eq:discrete_psd}
 \end{equation}
-where $\vect{a}$ aggregates transfer factors, loading orientation, phase, and weights. The source cross-spectral matrix is:
+where $\vect{a}$ aggregates transfer factors, loading orientation, phase, and weights and has length $N_s$. The source cross-spectral matrix is:
 \begin{equation}
     \mat{C}_q(\omega)
     =
@@ -634,7 +648,7 @@ To ensure the physical validity, numerical robustness, and interpretability of t
 
 \subsection{Proposition 1 --- Power Spectral Density Non-negativity}
 
-Let the source cross-spectral matrix $\mat{C}_q(\omega) \in \mathbb{C}^{N \times N}$ be positive-semidefinite (PSD), denoted as $\mat{C}_q(\omega) \succeq 0$. We show that the far-field pressure power spectral density $S_{pp}(\vect{n},\omega) \ge 0$ for all frequencies $f = \omega / (2\pi) \ge 0$ and observer directions $\vect{n}$. This proof relies on the physical assumptions that the observer distance satisfies $R > 0$, the reference frequency satisfies $f_{\mathrm{ref}} > 0$, the coherence decay parameters satisfy $a_x, a_y, a_z > 0$, the source autospectra satisfy $\Phi_m(\omega) \ge 0$, and the frequency parameter satisfies $f \ge 0$.
+Let the source cross-spectral matrix $\mat{C}_q(\omega) \in \mathbb{C}^{N_s \times N_s}$ be positive-semidefinite (PSD), denoted as $\mat{C}_q(\omega) \succeq 0$. We show that the far-field pressure power spectral density $S_{pp}(\vect{n},\omega) \ge 0$ for all frequencies $f = \omega / (2\pi) \ge 0$ and observer directions $\vect{n}$. This proof relies on the physical assumptions that the observer distance satisfies $R > 0$, the reference frequency satisfies $f_{\mathrm{ref}} > 0$, the coherence decay parameters satisfy $a_x, a_y, a_z > 0$, the source autospectra satisfy $\Phi_m(\omega) \ge 0$, and the frequency parameter satisfies $f \ge 0$.
 
 \paragraph{Proof.}
 Recall the discretized far-field pressure PSD given by Eq.~\ref{eq:discrete_psd}:
@@ -646,11 +660,11 @@ Recall the discretized far-field pressure PSD given by Eq.~\ref{eq:discrete_psd}
     \mat{C}_q(\omega)
     \vect{a}(\vect{n},\omega).
 \end{equation*}
-By definition of a positive-semidefinite matrix, for any complex vector $\vect{z} \in \mathbb{C}^N$, the quadratic form satisfies:
+By definition of a positive-semidefinite matrix, for any complex vector $\vect{z} \in \mathbb{C}^{N_s}$, the quadratic form satisfies:
 \begin{equation*}
     \vect{z}^H \mat{C}_q(\omega) \vect{z} \ge 0.
 \end{equation*}
-Since $\vect{a}(\vect{n},\omega) \in \mathbb{C}^N$ is a well-defined complex transfer weight vector, and since the propagation distance factor $R > 0$ yields a positive real denominator $(4\pi R)^2 > 0$, substituting $\vect{z} = \vect{a}(\vect{n},\omega)$ directly yields:
+Since $\vect{a}(\vect{n},\omega) \in \mathbb{C}^{N_s}$ is a well-defined complex transfer weight vector, and since the propagation distance factor $R > 0$ yields a positive real denominator $(4\pi R)^2 > 0$, substituting $\vect{z} = \vect{a}(\vect{n},\omega)$ directly yields:
 \begin{equation*}
     S_{pp}(\vect{n},\omega) \ge 0.
 \end{equation*}
@@ -661,13 +675,13 @@ We now prove that each of the three implemented coherence models yields $\mat{C}
 \begin{equation*}
     C_{q,mn}(\omega) = \sqrt{\Phi_m(\omega)\Phi_n(\omega)} \Gamma_{mn}(\omega).
 \end{equation*}
-Let $\vect{v} = [\sqrt{\Phi_1}, \dots, \sqrt{\Phi_N}]^T \in \mathbb{R}^N$ be a real-valued vector of source amplitude terms (since $\Phi_i \ge 0$). We define the rank-1 outer product matrix $\mat{S} = \vect{v}\vect{v}^T \in \mathbb{R}^{N \times N}$. For any complex vector $\vect{z} \in \mathbb{C}^N$:
+Let $\vect{v} = [\sqrt{\Phi_1}, \dots, \sqrt{\Phi_{N_s}}]^T \in \mathbb{R}_{\ge0}^{N_s}$ be a real-valued vector of source amplitude terms. We define the rank-1 outer product matrix $\mat{S} = \vect{v}\vect{v}^H \in \mathbb{C}^{N_s \times N_s}$. For any complex vector $\vect{z} \in \mathbb{C}^{N_s}$:
 \begin{equation*}
     \vect{z}^H \mat{S} \vect{z}
     =
-    \vect{z}^H (\vect{v}\vect{v}^T) \vect{z}
+    \vect{z}^H (\vect{v}\vect{v}^H) \vect{z}
     =
-    (\vect{z}^H \vect{v})(\vect{v}^T \vect{z})
+    (\vect{z}^H \vect{v})(\vect{v}^H \vect{z})
     =
     \left| \vect{z}^H \vect{v} \right|^2 \ge 0.
 \end{equation*}
@@ -675,7 +689,7 @@ Hence, $\mat{S} \succeq 0$. The source cross-spectral matrix can be written as t
 \begin{equation*}
     \mat{C}_q = \mat{S} \circ \mat{\Gamma},
 \end{equation*}
-where $\mat{\Gamma} \in \mathbb{C}^{N \times N}$ is the spatial coherence matrix containing $\Gamma_{mn}$. By the Schur Product Theorem, the Hadamard product of two positive-semidefinite matrices is also positive-semidefinite. Therefore, to show $\mat{C}_q \succeq 0$, it is sufficient to prove that the spatial coherence matrix $\mat{\Gamma} \succeq 0$ for each implemented model.
+where $\mat{\Gamma} \in \mathbb{C}^{N_s \times N_s}$ is the spatial coherence matrix containing $\Gamma_{mn}$. By the Schur Product Theorem, the Hadamard product of two positive-semidefinite matrices is also positive-semidefinite. Therefore, to show $\mat{C}_q \succeq 0$, it is sufficient to prove that the spatial coherence matrix $\mat{\Gamma} \succeq 0$ for each implemented model.
 
 \paragraph{1. Zero Coherence Model.}
 Under the \texttt{zero\_coherence} limit, the coherence elements are:
@@ -689,7 +703,7 @@ In the completely coherent limit, the complex coherence function is:
 \begin{equation*}
     \Gamma_{mn}(\omega) = \exp\left[ \ii \omega \left( \tau_\alpha(\alpha_m) - \tau_\alpha(\alpha_n) \right) \right].
 \end{equation*}
-Defining the complex vector $\vect{u} \in \mathbb{C}^N$ with elements $u_m = \exp\left[\ii \omega \tau_\alpha(\alpha_m)\right]$, the coherence matrix can be expressed as the rank-1 outer product $\mat{\Gamma} = \vect{u}\vect{u}^H$. For any $\vect{z} \in \mathbb{C}^N$:
+Defining the complex vector $\vect{u} \in \mathbb{C}^{N_s}$ with elements $u_m = \exp\left[\ii \omega \tau_\alpha(\alpha_m)\right]$, the coherence matrix can be expressed as the rank-1 outer product $\mat{\Gamma} = \vect{u}\vect{u}^H$. For any $\vect{z} \in \mathbb{C}^{N_s}$:
 \begin{equation*}
     \vect{z}^H \mat{\Gamma} \vect{z}
     =
@@ -704,7 +718,7 @@ For the partially coherent case, the coherence matrix incorporates spatial decay
 \begin{equation*}
     \Gamma_{mn}(\omega) = \exp\left[ - \tilde{d}_{mn} \frac{f}{f_{\mathrm{ref}}} \right] \exp\left[ \ii \omega \left( \tau_\alpha(\alpha_m) - \tau_\alpha(\alpha_n) \right) \right].
 \end{equation*}
-Let $\mat{D} \in \mathbb{R}^{N \times N}$ be the real spatial correlation matrix with elements:
+Let $\mat{D} \in \mathbb{R}^{N_s \times N_s}$ be the real spatial correlation matrix with elements:
 \begin{equation*}
     D_{mn} = \exp\left[ - \tilde{d}_{mn} \frac{f}{f_{\mathrm{ref}}} \right],
 \end{equation*}
@@ -717,7 +731,7 @@ The elements $D_{mn}$ are evaluated as:
 \begin{equation*}
     D_{mn} = \exp\left[ - c \left\| \vect{x}'_m - \vect{x}'_n \right\|_2 \right],
 \end{equation*}
-where $c = f/f_{\mathrm{ref}} \ge 0$ is a non-negative scalar, and the scaled coordinate vector of source point $m$ is $\vect{x}'_m = [x_m/a_x, y_m/a_y, z_m/a_z]^T \in \mathbb{R}^3$ (which is well-defined under $a_x, a_y, a_z > 0$). According to Schoenberg's theorem, the radial basis function $k(\vect{x}', \vect{y}') = \exp\left( - c \|\vect{x}' - \vect{y}'\|_2^\alpha \right)$ is positive-semidefinite in any Euclidean space for exponent $0 < \alpha \le 2$. The implemented coherence model corresponds to $\alpha=1$, hence $\mat{D}\succeq0$ for any frequency $f \ge 0$ (with $c=f/f_{\mathrm{ref}}\ge0$). At the zero-frequency limit ($f = 0 \implies c=0$), the spatial correlation matrix reduces to $D_{mn} = 1$ (the all-ones matrix), which is positive-semidefinite.
+where $c = f/f_{\mathrm{ref}} \ge 0$ is a non-negative scalar, and the scaled coordinate vector of source point $m$ is $\vect{x}'_m = [x_m/a_x, y_m/a_y, z_m/a_z]^T \in \mathbb{R}^3$ (which is well-defined under $a_x, a_y, a_z > 0$). According to Schoenberg's theorem, the radial basis function $k(\vect{x}', \vect{y}') = \exp\left( - c \|\vect{x}' - \vect{y}'\|_2^\alpha \right)$ is positive-semidefinite in any Euclidean space for exponent $0 < \alpha \le 2$. The implemented coherence model uses Euclidean distance, not squared distance, and corresponds to $\alpha=1$; hence $\mat{D}\succeq0$ for any frequency $f \ge 0$. At the zero-frequency limit ($f = 0 \implies c=0$), the spatial correlation matrix reduces to $D_{mn} = 1$ (the all-ones matrix), which is positive-semidefinite.
 Therefore, by applying the Schur Product Theorem twice, we obtain $\mat{\Gamma} \succeq 0$, and consequently $\mat{C}_q(\omega) \succeq 0$ for all models. $\hfill \blacksquare$
 
 \subsection{Proposition 2 --- Hermitian Symmetry}
@@ -726,7 +740,7 @@ We show that the source cross-spectral matrix $\mat{C}_q(\omega)$ satisfies Herm
 \begin{equation*}
     C_{q,mn}(\omega) = \overline{C_{q,nm}(\omega)},
 \end{equation*}
-for all indices $m, n \in \{1, \dots, N\}$ and all implemented coherence modes.
+for all indices $m, n \in \{1, \dots, N_s\}$ and all implemented coherence modes.
 
 \paragraph{Proof.}
 By definition:
@@ -798,7 +812,7 @@ This follows by substituting the eigendecomposition of $\mat{C}_q$ into Eq.~\ref
 
 \subsection{Proposition 4 --- Diagonal-Covariance No-Phase Limit}
 
-If $\mat{C}_q=\operatorname{diag}(\Phi_1,\ldots,\Phi_N)$, then:
+If $\mat{C}_q=\operatorname{Diag}(\Phi_1,\ldots,\Phi_{N_s})$, then:
 \begin{equation*}
     S_{pp}
     =
@@ -819,12 +833,12 @@ If $\mat{C}_q=\vect{q}\vect{q}^{H}$, then:
         \vect{a}^{H}\vect{q}
     \right|^2.
 \end{equation*}
-For equal source amplitudes, equal transfer magnitudes, fixed dipole axes, and a uniform linear spacing $s$, this reduces to the classical array-factor form:
+For the compact uniform $N_s$-source benchmark with equal source amplitudes, equal transfer magnitudes, fixed dipole axes, and uniform spacing $s$, this reduces to the classical array-factor form:
 \begin{equation*}
     S_{pp}(\theta)
     \propto
     \left|
-        \sum_{m=0}^{N-1}
+        \sum_{m=0}^{N_s-1}
         \exp\left(\ii mks\sin\theta\right)
     \right|^2.
 \end{equation*}
@@ -832,7 +846,7 @@ The model therefore recovers a phase-dominant acoustic array exactly when the so
 
 \subsection{Proposition 6 --- Off-Diagonal Interference Bound}
 
-Let $\mat{C}_{\mathrm{off}}=\mat{C}_q-\operatorname{diag}(\mat{C}_q)$. The interference contribution is:
+Let $\mat{C}_{\mathrm{off}}=\mat{C}_q-\operatorname{Diag}(\mat{C}_q)$. The interference contribution is:
 \begin{equation*}
     \Delta S_{\mathrm{int}}
     =
@@ -856,7 +870,7 @@ For source spacing scale $s$ with $ks\ll1$,
     =
     1+\ii k\vect{n}\cdot\vect{r}_m+O((ks)^2),
 \end{equation*}
-so path-length phase variation is asymptotically weak. Directivity control in this compact limit is dominated by dipole projection and source weighting rather than path phase. Conversely, in the exponential coherence model, if $(f/f_{\mathrm{ref}})\tilde d_{mn}\rightarrow\infty$ for $m\neq n$, then $\Gamma_{mn}\rightarrow0$ and $\mat{C}_q\rightarrow\operatorname{diag}(\mat{C}_q)$. High acoustic noncompactness does not by itself imply phase steering; usable phase control requires both geometric phase separation and surviving off-diagonal source covariance. $\hfill \blacksquare$
+so path-length phase variation is asymptotically weak. Directivity control in this compact limit is dominated by dipole projection and source weighting rather than path phase. Conversely, in the exponential coherence model, if $(f/f_{\mathrm{ref}})\tilde d_{mn}\rightarrow\infty$ for $m\neq n$, then $\Gamma_{mn}\rightarrow0$ and $\mat{C}_q\rightarrow\operatorname{Diag}(\mat{C}_q)$. High acoustic noncompactness does not by itself imply phase steering; usable phase control requires both geometric phase separation and surviving off-diagonal source covariance. $\hfill \blacksquare$
 
 \subsection{Proposition 8 --- Directivity Controllability Limit}
 
@@ -891,6 +905,41 @@ Low-$\mathcal P_R$ suppression & 229 & max phase effect $0.45\,\mathrm{dB}$ for 
 }
 \end{table}
 
+\begin{table}[htbp]
+\centering
+\caption{Mechanism labels used only for regime-map annotation. Continuous metrics are used for interpretation.}
+\label{tab:mechanism_thresholds}
+\begin{tabular}{ll}
+\toprule
+\textbf{Label} & \textbf{Criterion} \\
+\midrule
+Compact & $ks<0.1$ \\
+Phase interference & $\mathcal P_R>0.35$ and $\Delta_{\mathrm{phase}}>1\,\mathrm{dB}$ \\
+Incoherent mixer & $\mathcal P_R<0.05$ \\
+Decoherence & $\ell_c/s<0.3$ after compact and phase checks \\
+Mixed & none of the above \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Controlled synthetic mechanism examples generated by the validation script. These examples check that the diagnostics recover the expected limiting behavior before the feathered-wingtip campaign is analyzed.}
+\label{tab:controlled_mechanism_examples}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+\textbf{Case} & \textbf{Expected mechanism} & $\boldsymbol{\mathcal P_R}$ & $\boldsymbol{\Delta_{\mathrm{phase}}}$ \\
+\midrule
+Diagonal covariance, varying path phase & incoherent mixer & $0.000$ & $0.00\,\mathrm{dB}$ \\
+Diagonal covariance, varying dipole weights & dipole weighting & $0.000$ & $0.00\,\mathrm{dB}$ \\
+Rank-one covariance, varying path phase & phase interference & $0.924$ & $16.68\,\mathrm{dB}$ \\
+Partial coherence, $\ell_c/s=1$ & phase interference & $0.353$ & $2.70\,\mathrm{dB}$ \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{../../outputs/radiating_covariance/array_factor_benchmark.pdf}
@@ -914,7 +963,7 @@ We numerically verify that the far-field pressure power spectral density $S_{pp}
 Due to local coordinate variations and phase cancellations, convergence rates are evaluated empirically across the parameter space.
 
 \paragraph{Numerical Verification.}
-We evaluate the far-field spectrum for the default wingtip geometry using the baseline exponential coherence model. The test case uses an overhead observer ($\vect{n} = [0, 0, 1]^T$) and an acoustic frequency $f = 1000$ Hz. The spanwise parametric coordinate $\eta \in [0, 1]$ is discretized using a uniform grid of $n_\eta$ intervals, yielding a total of $M = N \times (n_\eta + 1)$ source points across the $N = 7$ wingtip feathers.
+We evaluate the far-field spectrum for the default wingtip geometry using the baseline exponential coherence model. The test case uses an overhead observer ($\vect{n} = [0, 0, 1]^T$) and an acoustic frequency $f = 1000$ Hz. The spanwise parametric coordinate $\eta \in [0, 1]$ is discretized using a uniform grid of $n_\eta$ intervals, yielding a total of $M = N_f(n_\eta + 1)$ source points across the $N_f = 7$ wingtip feathers.
 We vary $n_\eta \in \{8, 16, 32, 64, 128, 256, 512\}$. For each step, we track the pointwise difference:
 \begin{equation*}
     \epsilon^{(n_\eta)} = \left| S_{pp}^{(n_\eta)} - S_{pp}^{(n_\eta/2)} \right|,
@@ -1010,7 +1059,7 @@ Second, we perform a direct ablation of phase coherence on the optimized geometr
 Third, the direct ablation results demonstrate that removing phase coherence from a fixed optimized geometry significantly disrupts its local interference patterns and alters its directivity shape. Thus, phase interference is mathematically active and physically important for the acoustic response of any specific fixed wingtip design.
 
 \paragraph{Step 4: Geometric redundancy in the design space.}
-Fourth, because the optimization campaign achieves equivalent target-fit performance under zero coherence (Step 1), we conclude that the design space has sufficient geometric degrees of freedom (including chords, positions, and local dipole rotation via feather incidence) to allow the optimizer to re-synthesize target directivity patterns. Thus, the optimizer can compensate for the absence of phase steering through alternative geometric mechanisms, rendering inter-feather phase interference non-dominant for directivity control in this regime. $\hfill \blacksquare$
+Fourth, because the optimization campaign achieves equivalent target-fit performance under zero coherence (Step 1), we conclude that the design space has sufficient geometric degrees of freedom (including chords, positions, and local dipole rotation via feather incidence) to allow the optimizer to re-synthesize target directivity patterns. Thus, inter-feather phase interference is active for fixed full-model geometries but not uniquely controlling after reoptimization in this regime. $\hfill \blacksquare$
 
 \section{Results}
 
@@ -1020,7 +1069,7 @@ Our 50-target optimization campaign (200 total runs across four configurations) 
 
 The phase diagram in Fig.~\ref{fig:mechanism_phase_diagram} confirms the expected limiting behavior: compact cases with $ks\ll1$ and highly decohered cases with $\ell_c/s\ll1$ have weak phase-ablation sensitivity, while phase-sensitive cases appear only when both geometric phase separation and radiating off-diagonal covariance are available. This validates the use of $\mathcal P_R$ as an availability metric for phase interference in controlled synthetic regimes.
 
-The optimized feathered-wingtip campaign shows a subtler behavior. Across the 50 optimized full-model geometries, the mean raw coherence availability is high, the mean radiating phase-steerability is $\overline{\mathcal P_R}=0.811$, and the mean fixed-geometry phase-ablation RMSE is $7.93\,\mathrm{dB}$. The mean spherical-harmonic control dimension is $D_{\mathrm{control}}=8.58$ at the $\epsilon=10^{-2}$ threshold, and the mean target projection score is $\overline{Q_T}=0.856$. However, within this optimized subset, $\mathcal P_R$ explains only part of the variation in fixed-geometry phase-ablation effect ($R^2=0.214$), and the local target projection score alone does not predict final surrogate RMSE ($R^2=0.038$).
+The optimized feathered-wingtip campaign shows a subtler behavior. The following diagnostics are evaluated at $1000\,\mathrm{Hz}$ and averaged over the 50 optimized full-model geometries. The mean radiating phase-steerability is $\overline{\mathcal P_R}=0.811\pm0.045$ (95\% CI half-width $0.013$), and the mean fixed-geometry phase-ablation RMSE is $7.93\pm2.14\,\mathrm{dB}$ (95\% CI half-width $0.59\,\mathrm{dB}$). The mean local spherical-harmonic control dimension is $D_{\mathrm{control}}=8.58\pm0.95$ at the $\epsilon=10^{-2}$ threshold, and the mean target projection score is $\overline{Q_T}=0.856\pm0.140$.
 
 This does not contradict the phase diagram. Instead, it separates two questions: phase interference is active for fixed full-model geometries, but final target-fit performance after reoptimization can remain equivalent under zero coherence because the design space has alternative radiation and covariance directions available. The existing full/no-delay/zero-coherence equivalence should therefore be interpreted as geometric compensation and mechanism redundancy, not as evidence that phase terms are mathematically inactive.
 
@@ -1037,6 +1086,10 @@ This does not contradict the phase diagram. Instead, it separates two questions:
     \caption{Radiating-covariance reanalysis of the 50 optimized full-model targets. Left: $\mathcal P_R$ is positively related to fixed-geometry phase-ablation sensitivity, but the optimized cases occupy a relatively high-$\mathcal P_R$ band. Right: local spherical-harmonic target projection alone is not sufficient to predict final surrogate RMSE, indicating that nonlinear optimization, validation-surrogate mismatch, and mechanism redundancy remain important.}
     \label{fig:campaign_covariance_reanalysis}
 \end{figure}
+
+\subsection{Limits of local controllability diagnostics}
+
+Within the optimized subset, $\mathcal P_R$ explains only part of the variation in fixed-geometry phase-ablation effect ($R^2=0.214$). The local target projection score $Q_T$ is weaker as a standalone predictor of final validated RMSE ($R^2=0.038$). This is expected: $D_{\mathrm{control}}$ and $Q_T$ measure local linear accessibility of a log-directivity representation, not global nonlinear optimizability. Final target-fit performance also depends on search dynamics, surrogate mismatch, and mechanism substitution.
 
 \subsection{Acoustic performance and mechanism ablation}
 
@@ -1175,7 +1228,7 @@ Discrepancy is highly frequency dependent (Fig.~\ref{fig:validation_error_by_fre
 
 \subsection{Physical mechanisms of geometry-sensitive directivity control}
 
-The primary result of our campaign is that full-geometry optimization achieves about $1.3\,\mathrm{dB}$ lower validated target-shape RMSE than incidence-only control, but the three full-geometry configurations (\texttt{full}, \texttt{no\_delay}, \texttt{zero\_coherence}) perform identically. 
+The campaign result relevant to mechanism selection is that full-geometry optimization achieves about $1.3\,\mathrm{dB}$ lower validated target-shape RMSE than incidence-only control, but the three full-geometry configurations (\texttt{full}, \texttt{no\_delay}, \texttt{zero\_coherence}) perform identically.
 
 To interpret this, we expand the far-field spectrum into diagonal (uncorrelated) and off-diagonal (coherent) terms:
 \begin{equation}
@@ -1211,15 +1264,32 @@ This is consistent with the direct ablation study: removing phase coherence from
 
 \subsection{Limitations and model bounds}
 
-The theory--surrogate discrepancy increases significantly above $\kappa = kc_{\mathrm{ref}} \approx 11$ ($2\,\mathrm{kHz}$). This spectral discrepancy arises because the single-frequency calibration does not align the distinct spectral envelopes of the compact theoretical autospectrum and the multi-component, BPM/TNO-inspired surrogate. 
+The theory--surrogate discrepancy increases significantly above $\kappa = kc_{\mathrm{ref}} \approx 11$ ($2\,\mathrm{kHz}$). This spectral discrepancy arises because the single-frequency calibration does not align the distinct spectral envelopes of the compact theoretical autospectrum and the multi-component, BPM/TNO-inspired surrogate.
 
 Therefore, the present framework serves as a relative screening and mechanism-isolation tool for low-to-mid-frequency directivity matching. It is not suitable for high-frequency absolute sound level predictions. Further calibration against high-fidelity experimental or computational datasets is required to establish physical closure parameters.
+
+\begin{table}[htbp]
+\centering
+\caption{Scope of the Version 1 theory and computation.}
+\label{tab:scope_bounds}
+\begin{tabular}{p{0.46\linewidth}p{0.46\linewidth}}
+\toprule
+\textbf{Established within the model} & \textbf{Not established} \\
+\midrule
+PSD covariance gives nonnegative spectra. & Real feathered wingtips reduce broadband noise. \\
+Diagonal covariance removes path-phase interference. & The source closures are physically exact. \\
+Rank-one covariance recovers coherent array behavior. & $\mathcal P_R$ alone predicts optimized outcomes. \\
+Phase-sensitive regimes require noncompact spacing and radiating off-diagonal covariance. & Local controllability guarantees global optimization success. \\
+Fixed designs can be phase-sensitive; reoptimization can compensate. & High-frequency absolute SPL is accurately predicted. \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Conclusion}
 
 We have presented a radiating-covariance framework for segmented lifting-surface aeroacoustics. By using a Hermitian positive-semidefinite source covariance and explicitly decomposing it into radiating eigenmodes, the formulation guarantees physically valid pressure spectra while identifying which source-covariance modes are visible to the far field.
 
-Exact computational validation confirms PSD admissibility, modal-radiation equivalence, diagonal no-phase behavior, rank-one coherent-array recovery, and the off-diagonal interference bound. The mechanism phase diagram shows that phase-sensitive behavior requires both geometric phase separation and radiating off-diagonal covariance. In the 50-target feathered-wingtip campaign, modifying full geometry achieved a $1.3\,\mathrm{dB}$ validated RMSE advantage over incidence-only control. However, the identical final performance of the \texttt{full}, \texttt{no\_delay}, and \texttt{zero\_coherence} models indicates mechanism redundancy after reoptimization: phase interference is active for fixed full-model geometries, but it is not uniquely required for target-shape matching in the tested regime. Future work should calibrate the closure constants against high-fidelity aerodynamic and acoustic data and extend the controllability analysis beyond local finite-difference Jacobians.
+Exact computational validation confirms PSD admissibility, modal-radiation equivalence, diagonal no-phase behavior, rank-one coherent-array recovery, and the off-diagonal interference bound. The main result is not that feathered wingtips lack phase interference. Phase interference is a covariance-radiation regime: it becomes controlling only when coherent off-diagonal source covariance survives projection through the radiation operator. In the studied feathered-wingtip regime, fixed geometries show substantial phase sensitivity, but reoptimized zero-coherence geometries reach equivalent target-fit performance, indicating redundant directivity-control pathways through source weighting, dipole projection, and alternative radiation modes. Future work should calibrate the closure constants against high-fidelity aerodynamic and acoustic data and extend the controllability analysis beyond local finite-difference Jacobians.
 
 \begin{thebibliography}{99}
 
@@ -1307,7 +1377,7 @@ Eq.~\ref{eq:modal_radiation_identity} & Modal radiation identity & Shows far-fie
 Eq.~\ref{eq:radiation_operator} & Radiation operator & Integrates observer radiation vectors into a single source-space operator. \\
 Eq.~\ref{eq:p0} & Raw coherence availability & Measures off-diagonal covariance before radiation weighting. \\
 Eq.~\ref{eq:pr} & Radiating phase-steerability & Measures off-diagonal covariance that projects through the radiation operator. \\
-Eq.~\ref{eq:radiating_fraction} & Radiating covariance fraction & Measures visible covariance energy after radiation-operator weighting. \\
+Eq.~\ref{eq:radiating_gain} & Radiation-weighted covariance gain & Measures visible covariance energy after radiation-operator weighting. \\
 Eq.~\ref{eq:spherical_directivity} & Spherical-harmonic directivity & Represents directivity in a finite spherical-harmonic basis. \\
 Eq.~\ref{eq:controllability_jacobian} & Controllability Jacobian & Defines geometry sensitivity of spherical-harmonic directivity coefficients. \\
 Eq.~\ref{eq:control_dimension} & Control dimension & Numerical rank of the directivity controllability Jacobian. \\
@@ -1393,13 +1463,34 @@ The Version 1 radiating-covariance validation artifacts are generated with:
 \begin{verbatim}
 scripts/run_radiating_covariance_validation.py
 \end{verbatim}
-This command writes the algebraic validation tables, canonical array benchmark, diagonal no-phase benchmark, mechanism phase diagram, 50-target covariance reanalysis, and the FWA-Bench-0 release folder. The principal generated files are:
+This command writes the algebraic validation tables, canonical array benchmark, diagonal no-phase benchmark, controlled mechanism examples, mechanism phase diagram, 50-target covariance reanalysis, and the FWA-Bench-0 benchmark folder. The principal generated files are:
 \begin{itemize}
     \item \texttt{outputs/radiating\_covariance/radiating\_covariance\_validation\_summary.json};
-    \item \texttt{outputs/radiating\_covariance/mechanism\_phase\_diagram.csv};
-    \item \texttt{outputs/radiating\_covariance/campaign\_radiating\_covariance\_metrics.csv};
-    \item \texttt{FWA-Bench-0/README.md}.
+	    \item \texttt{outputs/radiating\_covariance/mechanism\_phase\_diagram.csv};
+	    \item \texttt{outputs/radiating\_covariance/controlled\_mechanism\_examples.csv};
+	    \item \texttt{outputs/radiating\_covariance/campaign\_radiating\_covariance\_metrics.csv};
+	    \item \texttt{FWA-Bench-0/README.md}.
 \end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{Reproducibility assets for the Version 1 computational benchmark. Validation uses NumPy/SciPy double precision; PSD square-root evaluations clip only small negative roundoff eigenvalues.}
+\label{tab:reproducibility_assets}
+\begin{tabular}{lc}
+\toprule
+\textbf{Item} & \textbf{Available in repository} \\
+\midrule
+Geometry definitions & yes \\
+Covariance closures & yes \\
+Exact benchmark scripts & yes \\
+Expected benchmark outputs & yes \\
+Optimization and target seeds & yes \\
+Figure reproduction script & yes \\
+Environment specification & yes, \texttt{pyproject.toml} \\
+Random seeds for validation & yes: 20260617 and 991 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{table}[htbp]
 \centering
@@ -1505,10 +1596,12 @@ $S_{pp}$ & Far-field pressure power spectral density (PSD) \\
 $\mat{C}_q$ & Source cross-spectral density matrix \\
 $\mat{\Gamma}$ & Spatial coherence matrix \\
 $\mat{W}$ & Integrated radiation operator, $\sum_o w_o\vect{a}_o\vect{a}_o^H$ \\
+$\operatorname{Diag}(\mat{C}_q)$ & Diagonal matrix formed from the diagonal entries of $\mat{C}_q$ \\
 $\lambda_r,\vect{u}_r$ & Eigenvalue and eigenvector of source covariance mode $r$ \\
+$N_f,N_s$ & Number of feathers and total number of discretized source points \\
 $\mathcal P_0$ & Raw off-diagonal coherence availability index \\
 $\mathcal P_R$ & Radiation-weighted phase-steerability index \\
-$\mathcal R$ & Radiating covariance fraction \\
+$G_R$ & Radiation-weighted covariance gain; not bounded as a probability fraction \\
 $D_{\mathrm{control}}$ & Numerical dimension of locally controllable directivity subspace \\
 $Q_T$ & Target projection onto the locally controllable directivity subspace \\
 $\Gamma_{mn}$ & Inter-feather spatial coherence function \\

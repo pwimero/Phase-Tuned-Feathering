@@ -1,0 +1,5 @@
+case,description,expected_mechanism,assigned_label,ks,coherence_length_over_spacing,raw_coherence_availability,radiating_phase_steerability,radiating_covariance_gain,phase_ablation_rmse_db
+diagonal_positions,"diagonal covariance, varying path phase",incoherent_mixer,incoherent_mixer,1.7,0.0,0.0,0.0,0.9999999999999999,0.0
+diagonal_dipoles,"diagonal covariance, varying dipole weights",dipole_weighting,dipole_weighting,1.7,0.0,0.0,0.0,1.0,0.0
+rank_one_positions,"rank-one covariance, varying path phase",phase_interference,phase_interference,1.7,inf,0.9258200997725515,0.9241828243002074,1.1942699811433195,16.68147593340221
+partial_coherence,exponential covariance transition case,phase_interference,phase_interference,1.7,1.0,0.455167734961103,0.35323282046445337,1.1746507928193164,2.6996509330753495

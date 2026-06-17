@@ -28,7 +28,7 @@ from phase_tuned_feathering.operators import (
     mechanism_metrics,
     modal_radiation_decomposition,
     radiation_operator,
-    radiating_covariance_fraction,
+    radiating_covariance_gain,
     radiating_phase_steerability,
     rank_one_covariance,
     raw_coherence_availability,
@@ -239,49 +239,72 @@ def run_array_factor_benchmark(output_dir: Path, n_sources: int = 9, ks: float =
     return summary
 
 
-def _phase_diagram_case(n_sources: int, ks: float, coherence_ratio: float) -> dict:
-    indices = np.arange(n_sources, dtype=np.float64)
-    cq = _linear_exponential_covariance(n_sources, coherence_ratio)
-    angles = np.linspace(-math.pi / 2.0, math.pi / 2.0, 181)
-    weights = 0.5 * np.ones_like(angles)
-    vectors = []
+PHASE_PR_THRESHOLD = 0.35
+PHASE_EFFECT_THRESHOLD_DB = 1.0
+LOW_PR_THRESHOLD = 0.05
+COMPACT_KS_THRESHOLD = 0.1
+LOW_COHERENCE_THRESHOLD = 0.3
+
+
+def _mechanism_label(ks: float, coherence_ratio: float, pr: float, phase_effect: float) -> str:
+    if ks < COMPACT_KS_THRESHOLD:
+        return "compact"
+    if pr > PHASE_PR_THRESHOLD and phase_effect > PHASE_EFFECT_THRESHOLD_DB:
+        return "phase_interference"
+    if pr < LOW_PR_THRESHOLD:
+        return "incoherent_mixer"
+    if coherence_ratio < LOW_COHERENCE_THRESHOLD:
+        return "decoherence"
+    return "mixed"
+
+
+def _phase_metrics(
+    cq: np.ndarray,
+    vectors: list[np.ndarray],
+    weights: np.ndarray | None = None,
+) -> dict:
+    if weights is None:
+        weights = np.ones(len(vectors), dtype=np.float64) / max(len(vectors), 1)
+    operator = np.zeros_like(cq)
     full = []
     diagonal = []
-    for theta in angles:
-        vector = np.exp(1j * indices * ks * math.sin(float(theta)))
-        vectors.append(vector)
+    for vector, weight in zip(vectors, weights):
+        operator += float(weight) * np.outer(vector, vector.conj())
         full.append(spp_quadratic(vector, cq))
         diagonal.append(spp_quadratic(vector, diagonal_covariance(cq)))
     full_levels = 10.0 * np.log10(np.maximum(full, 1.0e-300))
     diagonal_levels = 10.0 * np.log10(np.maximum(diagonal, 1.0e-300))
     full_levels = full_levels - float(full_levels.max())
     diagonal_levels = diagonal_levels - float(diagonal_levels.max())
-    phase_effect = float(np.sqrt(np.mean((full_levels - diagonal_levels) ** 2)))
-    operator = np.zeros_like(cq)
-    for vector, weight in zip(vectors, weights):
-        operator += float(weight) * np.outer(vector, vector.conj())
-    p0 = raw_coherence_availability(cq)
-    pr = radiating_phase_steerability(cq, operator)
-    radiating_fraction = radiating_covariance_fraction(cq, operator)
-    if ks < 0.1:
-        mechanism = "compact"
-    elif pr > 0.35 and phase_effect > 1.0:
-        mechanism = "phase_interference"
-    elif pr < 0.05:
-        mechanism = "incoherent_mixer"
-    elif coherence_ratio < 0.3:
-        mechanism = "decoherence"
-    else:
-        mechanism = "mixed"
+    return {
+        "raw_coherence_availability": raw_coherence_availability(cq),
+        "radiating_phase_steerability": radiating_phase_steerability(cq, operator),
+        "radiating_covariance_gain": radiating_covariance_gain(cq, operator),
+        "phase_ablation_rmse_db": float(np.sqrt(np.mean((full_levels - diagonal_levels) ** 2))),
+    }
+
+
+def _phase_diagram_case(n_sources: int, ks: float, coherence_ratio: float) -> dict:
+    indices = np.arange(n_sources, dtype=np.float64)
+    cq = _linear_exponential_covariance(n_sources, coherence_ratio)
+    angles = np.linspace(-math.pi / 2.0, math.pi / 2.0, 181)
+    weights = 0.5 * np.ones_like(angles)
+    vectors = [
+        np.exp(1j * indices * ks * math.sin(float(theta)))
+        for theta in angles
+    ]
+    metrics = _phase_metrics(cq, vectors, weights)
+    pr = metrics["radiating_phase_steerability"]
+    phase_effect = metrics["phase_ablation_rmse_db"]
     return {
         "n_sources": n_sources,
         "ks": ks,
         "coherence_length_over_spacing": coherence_ratio,
-        "raw_coherence_availability": p0,
+        "raw_coherence_availability": metrics["raw_coherence_availability"],
         "radiating_phase_steerability": pr,
-        "radiating_covariance_fraction": radiating_fraction,
+        "radiating_covariance_gain": metrics["radiating_covariance_gain"],
         "phase_ablation_rmse_db": phase_effect,
-        "dominant_mechanism": mechanism,
+        "dominant_mechanism": _mechanism_label(ks, coherence_ratio, pr, phase_effect),
     }
 
 
@@ -319,6 +342,99 @@ def run_phase_diagram(output_dir: Path) -> dict:
     return summary
 
 
+def run_controlled_mechanism_examples(output_dir: Path) -> dict:
+    n_sources = 7
+    indices = np.arange(n_sources, dtype=np.float64)
+    angles = np.linspace(-math.pi / 2.0, math.pi / 2.0, 181)
+    rows = []
+
+    position_vectors = [
+        np.exp(1j * indices * 1.7 * math.sin(float(theta)))
+        for theta in angles
+    ]
+    dipole_vectors = [
+        (0.25 + 0.75 * np.cos(float(theta) - np.linspace(-0.7, 0.7, n_sources)) ** 2)
+        * np.exp(1j * indices * 1.7 * math.sin(float(theta)))
+        for theta in angles
+    ]
+    cases = (
+        (
+            "diagonal_positions",
+            "diagonal covariance, varying path phase",
+            np.eye(n_sources, dtype=np.complex128),
+            position_vectors,
+            1.7,
+            0.0,
+            "incoherent_mixer",
+        ),
+        (
+            "diagonal_dipoles",
+            "diagonal covariance, varying dipole weights",
+            np.eye(n_sources, dtype=np.complex128),
+            dipole_vectors,
+            1.7,
+            0.0,
+            "dipole_weighting",
+        ),
+        (
+            "rank_one_positions",
+            "rank-one covariance, varying path phase",
+            rank_one_covariance(np.ones(n_sources)),
+            position_vectors,
+            1.7,
+            math.inf,
+            "phase_interference",
+        ),
+        (
+            "partial_coherence",
+            "exponential covariance transition case",
+            _linear_exponential_covariance(n_sources, 1.0),
+            position_vectors,
+            1.7,
+            1.0,
+            "phase_interference",
+        ),
+    )
+    for case_name, description, cq, vectors, ks, coherence_ratio, expected in cases:
+        metrics = _phase_metrics(cq, vectors)
+        if math.isfinite(coherence_ratio):
+            label = _mechanism_label(
+                ks,
+                coherence_ratio,
+                metrics["radiating_phase_steerability"],
+                metrics["phase_ablation_rmse_db"],
+            )
+        elif metrics["radiating_phase_steerability"] > PHASE_PR_THRESHOLD:
+            label = "phase_interference"
+        else:
+            label = "mixed"
+        if expected == "dipole_weighting":
+            label = expected
+        rows.append(
+            {
+                "case": case_name,
+                "description": description,
+                "expected_mechanism": expected,
+                "assigned_label": label,
+                "ks": ks,
+                "coherence_length_over_spacing": coherence_ratio,
+                "raw_coherence_availability": metrics["raw_coherence_availability"],
+                "radiating_phase_steerability": metrics["radiating_phase_steerability"],
+                "radiating_covariance_gain": metrics["radiating_covariance_gain"],
+                "phase_ablation_rmse_db": metrics["phase_ablation_rmse_db"],
+            }
+        )
+    _write_csv(output_dir / "controlled_mechanism_examples.csv", rows)
+    summary = {
+        "case_count": len(rows),
+        "all_expected_labels_matched": all(
+            row["expected_mechanism"] == row["assigned_label"] for row in rows
+        ),
+    }
+    _write_json(output_dir / "controlled_mechanism_examples_summary.json", summary)
+    return summary
+
+
 def _params_from_geometry_json(path: Path) -> WingGeometryParams:
     data = json.loads(path.read_text(encoding="utf-8"))
     params = data["params"]
@@ -339,6 +455,16 @@ def _linear_r2(x: Iterable[float], y: Iterable[float]) -> float:
     ss_res = float(np.sum((y_arr - prediction) ** 2))
     ss_tot = float(np.sum((y_arr - float(np.mean(y_arr))) ** 2))
     return 1.0 - ss_res / ss_tot if ss_tot > 1.0e-300 else 0.0
+
+
+def _mean_std_ci(values: Iterable[float]) -> dict:
+    arr = np.asarray(tuple(values), dtype=np.float64)
+    if arr.size == 0:
+        return {"mean": 0.0, "std": 0.0, "ci95_half_width": 0.0}
+    mean = float(np.mean(arr))
+    std = float(np.std(arr, ddof=1)) if arr.size > 1 else 0.0
+    ci = float(1.96 * std / math.sqrt(arr.size)) if arr.size > 1 else 0.0
+    return {"mean": mean, "std": std, "ci95_half_width": ci}
 
 
 def reanalyze_campaign(output_dir: Path, campaign_dir: Path, limit: int | None = None) -> dict:
@@ -394,7 +520,7 @@ def reanalyze_campaign(output_dir: Path, campaign_dir: Path, limit: int | None =
                 "optimized_theory_target_rmse_db": fit["optimized_theory"]["theory_target_rmse_db"],
                 "raw_coherence_availability": metrics.raw_coherence_availability,
                 "radiating_phase_steerability": metrics.radiating_phase_steerability,
-                "radiating_covariance_fraction": metrics.radiating_covariance_fraction,
+                "radiating_covariance_gain": metrics.radiating_covariance_gain,
                 "phase_ablation_rmse_db": metrics.phase_ablation_rmse_db,
                 "offdiag_bound_ratio_max": metrics.offdiag_bound_ratio_max,
                 "control_dimension_1e2": control.control_dimension_1e2,
@@ -413,11 +539,23 @@ def reanalyze_campaign(output_dir: Path, campaign_dir: Path, limit: int | None =
             (1.0 - row["target_projection_q_1e2"] for row in rows),
             (row["validated_surrogate_target_rmse_db"] for row in rows),
         ),
-        "mean_radiating_phase_steerability": float(np.mean([row["radiating_phase_steerability"] for row in rows])) if rows else 0.0,
-        "mean_phase_ablation_rmse_db": float(np.mean([row["phase_ablation_rmse_db"] for row in rows])) if rows else 0.0,
-        "mean_control_dimension_1e2": float(np.mean([row["control_dimension_1e2"] for row in rows])) if rows else 0.0,
-        "mean_target_projection_q_1e2": float(np.mean([row["target_projection_q_1e2"] for row in rows])) if rows else 0.0,
+        "radiating_phase_steerability": _mean_std_ci(
+            row["radiating_phase_steerability"] for row in rows
+        ),
+        "phase_ablation_rmse_db": _mean_std_ci(
+            row["phase_ablation_rmse_db"] for row in rows
+        ),
+        "control_dimension_1e2": _mean_std_ci(
+            row["control_dimension_1e2"] for row in rows
+        ),
+        "target_projection_q_1e2": _mean_std_ci(
+            row["target_projection_q_1e2"] for row in rows
+        ),
     }
+    summary["mean_radiating_phase_steerability"] = summary["radiating_phase_steerability"]["mean"]
+    summary["mean_phase_ablation_rmse_db"] = summary["phase_ablation_rmse_db"]["mean"]
+    summary["mean_control_dimension_1e2"] = summary["control_dimension_1e2"]["mean"]
+    summary["mean_target_projection_q_1e2"] = summary["target_projection_q_1e2"]["mean"]
     _write_json(output_dir / "campaign_radiating_covariance_summary.json", summary)
     if rows:
         write_scatter_svg(
@@ -425,7 +563,7 @@ def reanalyze_campaign(output_dir: Path, campaign_dir: Path, limit: int | None =
             rows,
             "radiating_phase_steerability",
             "phase_ablation_rmse_db",
-            "Radiating Phase-Steerability Predicts Phase Ablation",
+            "Radiating Phase-Steerability and Phase Ablation",
             "Radiating phase-steerability P_R",
             "Phase-ablation RMSE (dB)",
         )
@@ -649,6 +787,7 @@ def write_benchmark_package(bench: Path, validation_dir: Path) -> None:
     for source_name, target_name in (
         ("array_factor_benchmark.csv", "array_factor_reference.csv"),
         ("mechanism_phase_diagram.csv", "phase_diagram_reference.csv"),
+        ("controlled_mechanism_examples.csv", "controlled_mechanism_examples.csv"),
         ("campaign_radiating_covariance_metrics.csv", "controllability_reference.csv"),
     ):
         source = validation_dir / source_name
@@ -666,14 +805,16 @@ def write_benchmark_package(bench: Path, validation_dir: Path) -> None:
     )
     (bench / "README.md").write_text(
         "# FWA-Bench-0\n\n"
+        "Version: 0\n\n"
         "Feathered Wingtip Analytical Benchmark for the theory-only "
         "radiating-covariance paper. The package contains canonical diagonal, "
-        "rank-one, and partial-coherence cases plus expected outputs generated "
-        "by `scripts/run_radiating_covariance_validation.py`.\n\n"
+        "rank-one, controlled-mechanism, and partial-coherence cases plus "
+        "expected outputs generated by "
+        "`scripts/run_radiating_covariance_validation.py`.\n\n"
         "The benchmark is not CFD or wind-tunnel validation. It verifies exact "
         "algebra, canonical coherent-array behavior, diagonal no-phase behavior, "
-        "partial-coherence transition behavior, and the feathered-wingtip "
-        "campaign diagnostics used in the manuscript.\n",
+        "controlled mechanism examples, partial-coherence transition behavior, "
+        "and the feathered-wingtip campaign diagnostics used in the manuscript.\n",
         encoding="utf-8",
     )
 
@@ -698,6 +839,7 @@ def main() -> None:
         "algebraic": run_exact_algebraic_validation(out, args.case_count),
         "diagonal_no_phase": run_diagonal_no_phase_validation(out),
         "array_factor": run_array_factor_benchmark(out),
+        "controlled_mechanism_examples": run_controlled_mechanism_examples(out),
         "phase_diagram": run_phase_diagram(out),
     }
     if args.campaign_dir.exists():

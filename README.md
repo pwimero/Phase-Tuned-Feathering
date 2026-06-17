@@ -16,6 +16,7 @@ Core entry points:
 - `phase_tuned_feathering.radiation_operator(...)`
 - `phase_tuned_feathering.modal_radiation_decomposition(...)`
 - `phase_tuned_feathering.mechanism_metrics(...)`
+- `phase_tuned_feathering.radiating_covariance_gain(...)`
 - `phase_tuned_feathering.controllability_jacobian(...)`
 
 ## Radiating-covariance validation
@@ -27,9 +28,10 @@ scripts/run_radiating_covariance_validation.py
 ```
 
 This writes exact algebraic checks, canonical array-factor validation,
-diagonal no-phase validation, a partial-coherence mechanism phase diagram,
-50-target campaign radiating-covariance metrics, and the `FWA-Bench-0`
-reproducibility package. Outputs are written to `outputs/radiating_covariance`.
+diagonal no-phase validation, controlled mechanism examples, a partial-coherence
+mechanism phase diagram, 50-target campaign radiating-covariance metrics, and
+the `FWA-Bench-0` reproducibility package. Outputs are written to
+`outputs/radiating_covariance`.
 
 The package uses SI units internally. The Fusion script converts those values
 back to Fusion 360's centimeter-based API conventions.
