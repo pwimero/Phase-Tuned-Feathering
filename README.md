@@ -9,12 +9,27 @@ Core entry points:
 - `phase_tuned_feathering.default_geometry()`
 - `phase_tuned_feathering.source_grid(...)`
 - `phase_tuned_feathering.evaluate_spp(...)`
-- `phase_tuned_feathering.band_spl(...)`
-- `phase_tuned_feathering.directivity(...)`
 - `phase_tuned_feathering.screen_aero(...)`
-- `phase_tuned_feathering.optimize_stage(...)`
 - `phase_tuned_feathering.simulate_surrogate_dataset(...)`
 - `phase_tuned_feathering.compare_theory_to_simulation(...)`
+- `phase_tuned_feathering.source_csd_matrix(...)`
+- `phase_tuned_feathering.radiation_operator(...)`
+- `phase_tuned_feathering.modal_radiation_decomposition(...)`
+- `phase_tuned_feathering.mechanism_metrics(...)`
+- `phase_tuned_feathering.controllability_jacobian(...)`
+
+## Radiating-covariance validation
+
+Run the Version 1 theory and benchmark validation suite:
+
+```bash
+scripts/run_radiating_covariance_validation.py
+```
+
+This writes exact algebraic checks, canonical array-factor validation,
+diagonal no-phase validation, a partial-coherence mechanism phase diagram,
+50-target campaign radiating-covariance metrics, and the `FWA-Bench-0`
+reproducibility package. Outputs are written to `outputs/radiating_covariance`.
 
 The package uses SI units internally. The Fusion script converts those values
 back to Fusion 360's centimeter-based API conventions.

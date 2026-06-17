@@ -1,0 +1,42 @@
+{
+  "algebraic": {
+    "case_count": 1000,
+    "max_hermitian_relative_error": 1.292721955682688e-16,
+    "max_modal_relative_error": 4.472790389597804e-14,
+    "max_offdiag_bound_ratio": 0.6979344683381024,
+    "min_eigenvalue_scaled": -5.402513294982923e-16,
+    "pass": true,
+    "violations": 0
+  },
+  "array_factor": {
+    "analytic_peak_angle_deg": 0.0,
+    "angular_grid_step_deg": 0.24999999999999717,
+    "ks": 1.7,
+    "max_normalized_abs_error": 5.551115123125783e-16,
+    "model_peak_angle_deg": 0.0,
+    "n_sources": 9,
+    "pass": true,
+    "peak_angle_error_deg": 0.0
+  },
+  "campaign_reanalysis": {
+    "case_count": 50,
+    "mean_control_dimension_1e2": 8.58,
+    "mean_phase_ablation_rmse_db": 7.929233251658174,
+    "mean_radiating_phase_steerability": 0.8109991302965541,
+    "mean_target_projection_q_1e2": 0.8560840610161151,
+    "phase_effect_vs_pr_r2": 0.2137753502528391,
+    "rmse_vs_uncontrollable_target_energy_r2": 0.03756948319800235
+  },
+  "diagonal_no_phase": {
+    "case_count": 200,
+    "max_relative_change": 5.79031855527687e-16,
+    "pass": true
+  },
+  "phase_diagram": {
+    "case_count": 625,
+    "low_pr_case_count": 229,
+    "low_pr_max_phase_effect_db": 0.44988004623580335,
+    "phase_dominant_case_count": 197,
+    "pr_phase_effect_correlation": 0.6697599662967004
+  }
+}

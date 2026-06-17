@@ -1,0 +1,9 @@
+{
+  "case_count": 1000,
+  "max_hermitian_relative_error": 1.292721955682688e-16,
+  "max_modal_relative_error": 4.472790389597804e-14,
+  "max_offdiag_bound_ratio": 0.6979344683381024,
+  "min_eigenvalue_scaled": -5.402513294982923e-16,
+  "pass": true,
+  "violations": 0
+}

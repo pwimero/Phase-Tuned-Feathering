@@ -1,13 +1,13 @@
 """Genetic Algorithm Optimization Pipeline.
 
-This pipeline runs a Genetic Algorithm to find the optimal feather geometry
-for an arbitrary acoustic directivity target. It then automatically feeds the
-theoretically-optimized wing into the empirical Surrogate Simulator to prove
-that the design successfully steers sound under real-world aerodynamic physics.
+This pipeline runs a Genetic Algorithm to search for feather geometries that
+improve normalized acoustic directivity target matching. It then evaluates the
+theoretically optimized wing in the low-cost surrogate simulator as a
+mechanism-screening comparison, not as CFD or experimental proof.
 
 The target directivity is generated as a random mathematical shape on every
-run, proving that feather geometry parameterization is a universal control
-mechanism — not tuned to any specific scenario.
+run, providing a repeatable stress test of the geometry parameterization across
+smooth target families.
 """
 
 from __future__ import annotations
@@ -399,8 +399,8 @@ def _aero_proxy_metrics(
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Run Genetic Algorithm to prove feather geometry can achieve "
-            "any arbitrary directivity target."
+            "Run Genetic Algorithm target-matching studies for feather "
+            "geometry directivity mechanisms."
         ),
     )
     parser.add_argument(

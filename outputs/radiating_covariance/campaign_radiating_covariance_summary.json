@@ -1,0 +1,9 @@
+{
+  "case_count": 50,
+  "mean_control_dimension_1e2": 8.58,
+  "mean_phase_ablation_rmse_db": 7.929233251658174,
+  "mean_radiating_phase_steerability": 0.8109991302965541,
+  "mean_target_projection_q_1e2": 0.8560840610161151,
+  "phase_effect_vs_pr_r2": 0.2137753502528391,
+  "rmse_vs_uncontrollable_target_energy_r2": 0.03756948319800235
+}
