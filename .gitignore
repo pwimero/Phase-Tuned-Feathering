@@ -21,3 +21,310 @@ venv/
 *.out
 *.synctex.gz
 *.pdf
+
+=============================================================================
+
+Phase-Tuned-Feathering: peer-review / publication .gitignore
+
+Repository: https://github.com/pwimero/Phase-Tuned-Feathering
+
+Goal:
+
+Keep the reproducible RCAA / feathered-wingtip code, benchmarks, scripts,
+
+documentation, selected validation outputs, and manuscript-facing files public.
+
+Exclude local editor settings, caches, raw heavy outputs, private notes,
+
+credentials, and temporary run artifacts.
+
+=============================================================================
+
+=============================================================================
+
+Python caches and test/build artifacts
+
+=============================================================================
+
+pycache/
+**/pycache/
+*.py[cod]
+*$py.class
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+=============================================================================
+
+Local Python environments
+
+=============================================================================
+
+.venv/
+venv/
+env/
+ENV/
+conda-env/
+.conda/
+
+=============================================================================
+
+Local editor / OS files
+
+=============================================================================
+
+.vscode/
+.idea/
+.DS_Store
+**/.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+=============================================================================
+
+Logs, scratch files, and temporary local runs
+
+=============================================================================
+
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+
+tmp/
+temp/
+scratch/
+local/
+runs/
+run_*/
+wandb/
+mlruns/
+
+=============================================================================
+
+Private / submission-only material
+
+=============================================================================
+
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+secrets.*
+credentials.*
+token.*
+tokens.*
+
+private/
+confidential/
+submission_private/
+reviewer_responses_private/
+sage_submission/
+SageTrack/
+personal/
+admin/
+
+=============================================================================
+
+Keep source code and reproducibility infrastructure
+
+=============================================================================
+
+!src/
+!src/**
+!scripts/
+!scripts/**
+!tests/
+!tests/**
+!pyproject.toml
+!README.md
+!LICENSE
+!CITATION.cff
+
+=============================================================================
+
+Keep your benchmark package public
+
+=============================================================================
+
+!FWA-Bench-0/
+!FWA-Bench-0/**
+
+=============================================================================
+
+Keep Fusion 360 support scripts/documentation public,
+
+but exclude generated CAD binaries and local Fusion exports
+
+=============================================================================
+
+!Fusion/
+!Fusion/**
+Fusion//*.f3d
+Fusion//.f3z
+Fusion/**/.step
+Fusion//*.stp
+Fusion//.iges
+Fusion/**/.igs
+Fusion//*.sat
+Fusion//.obj
+Fusion/**/.stl
+
+=============================================================================
+
+Keep project documentation public
+
+=============================================================================
+
+!documentation/
+!documentation/**
+
+=============================================================================
+
+Outputs
+
+Your README says the validation scripts write to:
+
+outputs/radiating_covariance
+
+outputs/validation
+
+For peer review, keep only small, curated, manuscript-facing outputs:
+
+summary JSON/CSV files, benchmark manifests, selected SVG/PDF/PNG figures.
+
+Ignore large raw arrays, full optimization dumps, caches, and temporary runs.
+
+=============================================================================
+
+outputs/**
+
+Keep output folder readmes/manifests
+
+!outputs/
+!outputs//README.md
+!outputs//.md
+!outputs/**/.json
+!outputs//*.csv
+!outputs//.txt
+!outputs/**/.yaml
+!outputs/**/*.yml
+
+Keep publication/review figures
+
+!outputs//*.svg
+!outputs//.png
+!outputs/**/.pdf
+
+But ignore heavy numerical binary outputs anywhere under outputs
+
+outputs//*.npy
+outputs//.npz
+outputs/**/.pkl
+outputs//*.pickle
+outputs//.h5
+outputs/**/.hdf5
+outputs//*.mat
+outputs//.pt
+outputs/**/.pth
+outputs//*.ckpt
+outputs//.parquet
+outputs/**/.feather
+
+Ignore likely raw optimization/campaign dumps
+
+outputs//raw/
+outputs//raw_results/
+outputs//raw_outputs/
+outputs//checkpoints/
+outputs//population*
+outputs//generations/
+outputs//full_runs/
+outputs//debug/
+outputs//tmp/
+outputs//temp/
+
+=============================================================================
+
+Large generated scientific data outside outputs
+
+=============================================================================
+
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.mat
+*.pt
+*.pth
+*.ckpt
+*.parquet
+*.feather
+
+=============================================================================
+
+Manuscript / LaTeX
+
+Keep final PDFs if intentionally committed.
+
+Ignore LaTeX build clutter only.
+
+=============================================================================
+
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv
+
+Do NOT globally ignore PDFs.
+
+Manuscript PDFs, benchmark PDFs, and figure PDFs can be useful for review.
+
+!*.pdf
+
+=============================================================================
+
+Personal todo / private planning
+
+Your repo currently has a top-level file named “todolist”.
+
+Keep this out of the public repo unless it is a clean publication checklist.
+
+=============================================================================
+
+todolist
+todo
+TODO
+TODO.md
+notes/
+draft_notes/
