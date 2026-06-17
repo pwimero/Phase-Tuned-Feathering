@@ -1,8 +1,5 @@
 # Phase Tuned Feathering
 
-This repository now contains a dependency-light Python research package that
-shares the feathered-wingtip geometry rules with the Fusion 360 CAD script and
-implements the model-first acoustic workflow described in the manuscript plan.
 
 Core entry points:
 
