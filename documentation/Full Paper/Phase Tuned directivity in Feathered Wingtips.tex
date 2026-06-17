@@ -756,14 +756,14 @@ Under the full model, target RMSE decreases from $14.60\pm1.48\,\mathrm{dB}$ (ba
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_target_fit_chart.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/optimization/campaign_target_fit_chart.pdf}
     \caption{Target-fit error before and after optimization across the full study. Each row compares the baseline theory, optimized theory, and validated surrogate RMSE for one run. The systematic leftward shift of the optimized and validated bars indicates consistent target-shape improvement under the modeled mechanism set.}
     \label{fig:campaign_target_fit}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth,height=0.45\textheight,keepaspectratio]{../../outputs/optimization/campaign_directivity_grid.pdf}
+    \includegraphics[width=0.85\textwidth,height=0.32\textheight,keepaspectratio]{../../outputs/optimization/campaign_directivity_grid.pdf}
     \caption{Representative optimized directivity patterns against target shapes. The examples show that the optimizer can redistribute normalized directivity substantially, although residual mismatch remains for difficult targets and the problem should therefore be interpreted as target-shape improvement rather than exact target synthesis.}
     \label{fig:campaign_directivity}
 \end{figure}
@@ -790,7 +790,7 @@ $\mathtt{full}$ & $9.157\pm2.404$ & $-1.295$ & $[-1.481,\,-1.109]$ & $50/50$ & $
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_freedom_fit_chart.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/optimization/campaign_freedom_fit_chart.pdf}
     \caption{Mechanism condition versus validated target-fit error. The incidence-only condition is clearly separated from the three full-geometry ablations, showing that geometry beyond incidence contributes materially to target matching.}
     \label{fig:campaign_freedom_fit}
 \end{figure}
@@ -820,7 +820,7 @@ This acoustic benefit is accompanied by a small aerodynamic penalty (Fig.~\ref{f
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_freedom_tradeoff_chart.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/optimization/campaign_freedom_tradeoff_chart.pdf}
     \caption{Mechanism-level acoustic--aerodynamic tradeoff. Rightward movement indicates larger target-fit improvement relative to each ablation's own baseline, so the horizontal coordinate should be read descriptively rather than as a formal cross-ablation metric. Lower drag ratio is aerodynamically preferable. The full and no-delay conditions occupy similar acoustic positions and similar drag ratios, whereas the zero-coherence condition retains most of the acoustic benefit without the same drag-ratio increase.}
     \label{fig:freedom_tradeoff}
 \end{figure}
@@ -862,7 +862,7 @@ A high-resolution dense validation for target seed 19 (1{,}728 points, 288 obser
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_directivity.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/validation/validation_directivity.pdf}
     \caption{Representative achieved-versus-target directivity for the dense validation case at target seed 19. The figure provides the most direct visual comparison between the desired directivity pattern and the surrogate-validated pattern obtained from the optimized geometry.}
     \label{fig:validation_directivity}
 \end{figure}
@@ -1086,28 +1086,28 @@ No-delay $-$ Zero-coherence & $0.0690$ & $0.0111$ & $0.0607$ & $1.000$ \\
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_mse_chart.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/optimization/campaign_mse_chart.pdf}
     \caption{Study-wide distribution of mean-squared target-fit error. This view complements the RMSE plots in the main text by showing the same trend in the native objective units used during optimization.}
     \label{fig:appendix_campaign_mse}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_mutation_effectiveness.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/optimization/campaign_mutation_effectiveness.pdf}
     \caption{Mutation effectiveness across the study. The figure summarizes how target-fit improvement scales with the size of the geometric perturbation, showing that larger mutations are not uniformly more effective.}
     \label{fig:appendix_mutation_effectiveness}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_aero_tradeoff.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/optimization/campaign_aero_tradeoff.pdf}
     \caption{Study-level acoustic improvement versus aerodynamic proxy cost for individual runs. The scatter makes the spread of the acoustic--aerodynamic compromise visible beyond the mechanism-level means shown in the main text.}
     \label{fig:appendix_aero_tradeoff}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/optimization/campaign_aero_retention_chart.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/optimization/campaign_aero_retention_chart.pdf}
     \caption{Lift-to-drag retention across the full study. The absence of clean mechanism-level separation in this figure is consistent with the paired statistical tests reported in Table~\ref{tab:appendix_pairwise_aero}.}
     \label{fig:appendix_aero_retention}
 \end{figure}
@@ -1118,14 +1118,14 @@ No-delay $-$ Zero-coherence & $0.0690$ & $0.0111$ & $0.0607$ & $1.000$ \\
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_directivity.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/validation/validation_directivity.pdf}
     \caption{Representative high-resolution directivity comparison for the optimized full-model geometry at target seed 19. The main directional structure is reproduced, but residual lobe-shape and level errors remain, especially away from the calibration frequency.}
     \label{fig:appendix_validation_directivity}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1.0\textwidth]{../../outputs/validation/validation_error_heatmap.pdf}
+    \includegraphics[width=0.75\textwidth]{../../outputs/validation/validation_error_heatmap.pdf}
     \caption{Representative validation error heat map for the same high-resolution case. The residual structure is frequency dependent and directional, reinforcing the interpretation that the remaining mismatch is not a single global amplitude offset.}
     \label{fig:appendix_validation_heatmap}
 \end{figure}
